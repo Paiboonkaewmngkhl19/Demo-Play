@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<!--
+  Live Stream — TV player overlay for a live channel, built from the Figma frame
+  "player live tv_Stream" (PLAY-player, node 1146:37842).
+  Same conventions as the other prototypes: 1920x1080 canvas scaled to the window, works with mouse/touch
+  and with a TV remote (arrow keys + Enter, Esc/Backspace returns to the Content Picker).
+  Assets in live-stream-assets/ are exported from that Figma frame.
+  Controls are desktop-sized by default (see layout()); open with ?mode=tv for the exact Figma TV sizes.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Stream</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Tokens from the Figma file (TV Compose) */
+  :root{
+    --on-surface:#e8e8e8;
+    --on-surface-variant:#a8a8a8;
+    --inverse-surface:#e8e8e8;
+    --surface-container-high:#3a3a3a;
+    --surface-container-highest:#4a4a4a;
+    --seek-track:#6f6f6f;
+    --live:#ea5454;
+    --focus:#ffffff;
+    --chip-countdown:rgba(56,69,76,0.7);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:#000;
+    color:var(--focus);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{ font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+
+  #tv-frame{ position:relative; background:#000; overflow:hidden; }
+  #canvas{
+    position:absolute; top:0; left:0;
+    width:1920px; height:1080px;
+    transform-origin:top left;
+    overflow:hidden;
+    background:#000;
+  }
+
+  /* ---------- Video (still frame) ---------- */
+  /* Figma: 2034x1334 box, object-fit contain, left 0, vertically centred 18px below the middle */
+  .video{
+    position:absolute; left:0; top:calc(50% + 18px); transform:translateY(-50%);
+    width:2034px; height:1334px; object-fit:contain; pointer-events:none;
+  }
+
+  /* ---------- Overlay ---------- */
+  .scrim{
+    position:absolute; inset:0; opacity:.9; pointer-events:none;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 24%),
+      linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.9) 93%);
+  }
+
+  /* ---------- UI size ----------
+     --ui shrinks the header and controls relative to the 1920x1080 canvas. It is 1 in TV mode (the Figma sizes);
+     in desktop mode layout() sets it so the controls keep a fixed on-screen size, like a web video player.
+     Each block is widened by 1/--ui before scaling, so it still spans the full canvas width. */
+  #canvas{ --ui:1; }
+  .channel, .controls{ width:calc(1920px / var(--ui)); transform:scale(var(--ui)); }
+  .channel{ transform-origin:top left; }
+  .controls{ transform-origin:bottom left; }
+
+  /* ---------- Channel header ---------- */
+  .channel{
+    position:absolute; left:0; top:0; height:232px;
+    display:flex; gap:24px; align-items:flex-start;
+    padding:60px 90px;
+  }
+  .avatar{
+    width:112px; height:112px; border-radius:100px; flex:none;
+    background:#404045; overflow:hidden;
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; display:block; border-radius:100px; }
+  .channel-text{ height:112px; display:flex; flex-direction:column; gap:24px; justify-content:center; }
+  .channel-title{ margin:0; font-size:40px; line-height:32px; font-weight:700; white-space:nowrap; }
+  .channel-meta{ display:flex; gap:16px; align-items:center; font-size:24px; line-height:1.2; font-weight:500; letter-spacing:-0.24px; white-space:nowrap; }
+  .crown{ width:40px; height:40px; display:flex; align-items:center; justify-content:center; }
+  .crown span{ position:relative; width:32px; height:32px; }
+  /* Figma: shape inset 16.67% top/bottom, 6.25% left/right inside the 32px icon */
+  .crown img{ position:absolute; top:16.67%; bottom:16.67%; left:6.25%; right:6.25%; width:87.5%; height:66.66%; display:block; }
+  .countdown{
+    height:40px; padding:8px 12px; border-radius:8px;
+    background:var(--chip-countdown); backdrop-filter:blur(2px);
+    display:flex; align-items:center; line-height:normal;
+  }
+  .sep{ width:8px; height:8px; display:block; }
+
+  /* ---------- Bottom controls ---------- */
+  .controls{
+    position:absolute; left:0; bottom:0;
+    display:flex; flex-direction:column; gap:32px;
+    padding:60px 90px;
+  }
+  .row{ display:flex; align-items:center; justify-content:space-between; width:100%; }
+  .row.buttons{ align-items:flex-end; }
+  .group{ display:flex; gap:24px; align-items:center; }
+  .row.buttons .group:first-child{ align-items:flex-end; }
+
+  /* Round icon buttons (84px), two states taken from Figma:
+     default = #4A4A4A circle at 80% with a light (#E8E8E8, 80%) icon  (e.g. "Start Over")
+     active  = 3px #E8E8E8 ring + 69px #E8E8E8 circle with a dark (#3B3C3E) icon  ("View Key Moment")
+     The button SVGs are inlined by JS so these rules can restyle them; the <img> stays as a fallback. */
+  .icon-btn{ position:relative; width:84px; height:84px; border-radius:50%; flex:none; }
+  .icon-btn > img, .icon-btn > svg{ position:absolute; inset:0; width:84px; height:84px; display:block; overflow:visible; }
+  .icon-btn .btn-bg{
+    fill:var(--surface-container-highest); opacity:.8;
+    transform-box:fill-box; transform-origin:center;
+    transition:fill .15s ease, opacity .15s ease, transform .15s ease;
+  }
+  .icon-btn .btn-glyph{ opacity:.8; transition:opacity .15s ease; }
+  .icon-btn .btn-glyph path{ fill:var(--on-surface); transition:fill .15s ease; }
+  .icon-btn.focused .btn-bg{ fill:var(--on-surface); opacity:1; transform:scale(.8214); } /* r 42 -> 34.5 */
+  .icon-btn.focused .btn-glyph{ opacity:1; }
+  .icon-btn.focused .btn-glyph path{ fill:#3B3C3E; }
+  /* line glyphs (the Back chevron) are stroked rather than filled */
+  .icon-btn .btn-glyph path.stroke{ fill:none; stroke:var(--on-surface); stroke-width:3.5; stroke-linecap:round; stroke-linejoin:round; transition:stroke .15s ease; }
+  .icon-btn.focused .btn-glyph path.stroke{ fill:none; stroke:#3B3C3E; }
+  /* Start Over <-> Watch Live: the same icon mirrored while it would take you back to live */
+  .icon-btn .btn-glyph, .icon-btn > img{ transform-box:fill-box; transform-origin:center; transition:opacity .15s ease, transform .25s ease; }
+  .icon-btn.flipped .btn-glyph, .icon-btn.flipped > img{ transform:scaleX(-1); }
+  .icon-btn::after{
+    content:''; position:absolute; inset:-1.5px; border-radius:50%;
+    border:3px solid var(--on-surface); opacity:0; transition:opacity .15s ease; pointer-events:none;
+  }
+  .icon-btn.focused::after{ opacity:1; }
+
+  /* Tooltip above the focused button */
+  .tooltip{
+    position:absolute; left:50%; top:-82px; transform:translateX(-50%);
+    display:none; flex-direction:column; align-items:center; pointer-events:none;
+  }
+  .icon-btn.focused .tooltip{ display:flex; }
+  .tooltip-body{
+    background:var(--surface-container-high); border-radius:16px;
+    padding:14px 24px; box-shadow:0 2px 8px rgba(0,0,0,.25);
+    font-size:24px; line-height:32px; color:var(--on-surface); white-space:nowrap;
+  }
+  .tooltip-arrow{ width:16.971px; height:16.971px; display:flex; align-items:center; justify-content:center; margin-top:-8.5px; }
+  .tooltip-arrow i{ width:12px; height:12px; background:var(--surface-container-high); transform:rotate(-45deg); display:block; }
+
+  /* Seek bar */
+  .seek{ display:flex; gap:12px; align-items:center; width:100%; font-size:24px; line-height:28px; color:var(--on-surface-variant); }
+  /* the time changes every second, so a fixed width + tabular digits keep the track from jiggling */
+  .seek .time-start{ flex:none; width:112px; font-variant-numeric:tabular-nums; }
+  /* Live seek bar: one continuous track from programme start (left) to the live edge (right).
+     Fully white while watching live; the grey part shows how far behind live you are. */
+  .track{ position:relative; flex:1 0 0; height:8px; transition:height .15s ease; cursor:pointer; }
+  .bar{ position:absolute; inset:0; border-radius:999px; overflow:hidden; background:var(--seek-track); }
+  .played{ position:absolute; left:0; top:0; height:100%; width:100%; border-radius:999px; background:var(--inverse-surface); }
+  .badge.live{ transition:opacity .2s ease; }
+  .badge.live.behind{ opacity:.45; }
+  .handle{ display:none; position:absolute; top:-27px; width:60px; height:60px; margin-left:-27px; }
+  /* Figma: handle SVG sits at inset -13.75% / -18.75% / -23.75% / -18.75% of the 60px box */
+  .handle img{ position:absolute; top:-8.25px; left:-11.25px; width:82.5px; height:82.5px; display:block; }
+  .seek.focused .track{ height:12px; }
+  .seek.focused .handle{ display:block; }
+  .handle svg{ position:absolute; top:-8.25px; left:-11.25px; width:82.5px; height:82.5px; display:block; overflow:visible; cursor:pointer; }
+  /* handle glyph: pause while playing, play while paused, and while scrubbing:
+     .skip = 10s jump (circular arrow), .fast = hold for 2x (double triangle); .rev mirrors both for rewind */
+  .handle .glyph-play, .handle .glyph-skip, .handle .glyph-fast{ display:none; }
+  .handle.paused .glyph-play{ display:inline; }
+  .handle.paused .glyph-pause{ display:none; }
+  .handle.skip .glyph-skip, .handle.fast .glyph-fast{ display:inline; }
+  .handle.skip .glyph-pause, .handle.skip .glyph-play,
+  .handle.fast .glyph-pause, .handle.fast .glyph-play{ display:none; }
+
+  /* Scrub preview above the handle: thumbnail, time and a pointer (shown while skipping / fast-scrubbing).
+     .preview sits on the handle's x; the thumbnail is shifted by JS so it stays inside the track. */
+  .preview{
+    position:absolute; bottom:47px; width:0; height:0;
+    opacity:0; transition:opacity .25s ease; pointer-events:none;
+  }
+  /* appears instantly on a key press, fades out after */
+  .seek.scrubbing .preview{ opacity:1; transition:none; }
+  /* the icon buttons step aside while scrubbing so the preview sits over clear picture */
+  .controls:has(.seek.scrubbing) .row.buttons{ opacity:0; }
+  .preview-arrow{
+    position:absolute; bottom:0; left:-9px; width:0; height:0;
+    border-left:9px solid transparent; border-right:9px solid transparent; border-top:11px solid var(--on-surface-variant);
+  }
+  .preview-time{
+    position:absolute; bottom:18px; left:0; transform:translateX(-50%);
+    font-size:24px; line-height:28px; color:var(--on-surface-variant); white-space:nowrap; font-variant-numeric:tabular-nums;
+  }
+  .preview-thumb{
+    position:absolute; bottom:58px; width:320px; height:180px; border-radius:12px; overflow:hidden;
+    background:var(--surface-container-high); box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  .preview-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* Text chips */
+  .chip{
+    height:60px; padding:0 40px; border-radius:1000px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px; line-height:32px; font-weight:500; color:var(--on-surface-variant);
+    opacity:.8; white-space:nowrap; transition:background .15s ease, color .15s ease;
+  }
+  .chip.focused{ opacity:1; background:var(--inverse-surface); color:#1b1b1b; }
+
+  /* Badges */
+  .badge{
+    display:flex; gap:8px; align-items:center; justify-content:center;
+    padding:12px 24px; border-radius:1000px;
+    font-size:24px; font-weight:500; line-height:normal; color:var(--focus); white-space:nowrap;
+  }
+  .badge.viewers{ background:var(--surface-container-highest); }
+  .badge.viewers img{ width:24px; height:24px; display:block; }
+  .badge.live{ background:var(--live); }
+  .badge.live .dot{ width:12px; height:12px; border-radius:100px; background:var(--focus); }
+
+  /* ---------- Key Moment mode ----------
+     Entered from "View Key Moment". The icon buttons step aside, the seek bar shows highlight sections
+     (Figma's highlight blue #337ECF) with a sparkle checkpoint at the start of each, and a card over the
+     handle names the highlight the playhead is on. */
+  .km-segs, .km-marks{ position:absolute; inset:0; display:none; }
+  .seek.km .km-segs, .seek.km .km-marks{ display:block; }
+  .km-seg{ position:absolute; top:0; height:100%; background:#337ecf; }
+  .km-mark{
+    position:absolute; top:50%; width:28px; height:28px; margin:-14px 0 0 -14px; border-radius:50%;
+    background:var(--on-surface); box-shadow:0 1px 4px rgba(0,0,0,.35); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .km-mark svg{ width:18px; height:18px; display:block; }
+  /* card sits where the scrub preview's thumbnail does (58px above the pointer), with the time + pointer below it */
+  .km-card{
+    position:absolute; bottom:105px; width:320px; padding:8px; border-radius:12px; display:none;
+    background:var(--surface-container-high); box-shadow:0 2px 8px rgba(0,0,0,.25); pointer-events:none;
+  }
+  .km-pointer{ position:absolute; bottom:47px; width:0; height:0; display:none; pointer-events:none; }
+  .seek.km-at .km-card, .seek.km-at .km-pointer{ display:block; }
+  .seek.km-at .preview{ display:none; }
+  .km-card img{ width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; display:block; }
+  .km-title{ margin:10px 4px 8px; font-size:24px; line-height:30px; color:var(--on-surface); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .km-tag{ display:inline-block; margin:0 4px 4px; padding:4px 12px; border-radius:6px; background:#1f1f1f; color:var(--on-surface); font-size:18px; line-height:24px; }
+  /* "Select Key Moment" is a chip that only exists in Key Moment mode (it replaces the two normal chips) */
+  .chip.km-hint{ display:none; }
+  /* the button row swaps to Back + Watch Live */
+  .icon-btn.km-only{ display:none; }
+  #canvas.km .icon-btn.km-only{ display:inline-block; }
+  #canvas.km .row.buttons .icon-btn:not(.km-only){ display:none; }
+  #canvas.km .chip:not(.km-hint){ display:none; }
+  #canvas.km .chip.km-hint{ display:flex; }
+
+  /* ---------- Auto-hide ("wake") ----------
+     After 3s without input the header fades up and the controls fade down; the LIVE tag stays.
+     `translate` is used (not `transform`) so it stacks with the --ui scale on .channel/.controls. */
+  .scrim, .channel, .row.buttons, .seek, .controls > .row:last-child > .group:first-child, .badge.viewers{
+    transition:opacity .45s ease, translate .45s ease;
+  }
+  #canvas.ui-hidden .scrim{ opacity:0; }
+  #canvas.ui-hidden .channel{ opacity:0; translate:0 -40px; pointer-events:none; }
+  #canvas.ui-hidden .row.buttons,
+  #canvas.ui-hidden .seek,
+  #canvas.ui-hidden .controls > .row:last-child > .group:first-child,
+  #canvas.ui-hidden .badge.viewers{ opacity:0; translate:0 40px; pointer-events:none; }
+
+  /* Toast */
+  .toast{
+    position:absolute; left:50%; top:96px; transform:translate(-50%,-20px);
+    background:var(--surface-container-high); color:var(--on-surface);
+    padding:16px 28px; border-radius:16px; font-size:24px; line-height:32px;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+    opacity:0; transition:opacity .2s ease, transform .2s ease; pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+</style>
+</head>
+<body>
+
+<div id="tv-frame">
+  <div id="canvas">
+    <img class="video" src="live-stream-assets/background.png" alt="">
+    <div class="scrim ui" id="scrim"></div>
+
+    <div class="ui" id="ui">
+      <header class="channel">
+        <div class="avatar"><img src="https://tr.play-rfcdn.ais.th/iptvepg/layout/epg/poster/202606/2606302071773724864557057.png" alt="PLAY Sports 55"
+          onerror="this.onerror=null; this.src='live-stream-assets/channel-logo.png'"></div>
+        <div class="channel-text">
+          <h1 class="channel-title">Brooklyn Nets vs Phoenix Suns</h1>
+          <div class="channel-meta">
+            <span>Play Sport 55</span>
+            <span class="crown"><span><img src="live-stream-assets/crown.svg" alt="Premium"></span></span>
+            <span class="countdown" aria-label="Channel number">555</span>
+            <img class="sep" src="live-stream-assets/dot-separator.svg" alt="">
+            <span>20:00 - 22:00</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="controls">
+        <div class="row buttons">
+          <div class="group">
+            <!-- Key Moment mode only: leave the mode / return to the live edge -->
+            <button class="icon-btn km-only" data-row="0" data-action="kmBack" data-label="Back" aria-label="Back">
+              <svg viewBox="0 0 84 84" width="84" height="84" aria-hidden="true">
+                <circle class="btn-bg" cx="42" cy="42" r="42"/>
+                <g class="btn-glyph"><path class="stroke" d="M46.5 30 L34.5 42 L46.5 54"/></g>
+              </svg>
+            </button>
+            <button class="icon-btn km-only flipped" data-row="0" data-action="kmLive" data-label="Watch Live" aria-label="Watch live">
+              <img src="live-stream-assets/btn-start-over.svg" alt="">
+            </button>
+            <button class="icon-btn" data-row="0" data-action="startOver" data-label="Start Over" aria-label="Start over">
+              <img src="live-stream-assets/btn-start-over.svg" alt="">
+            </button>
+            <button class="icon-btn key" data-row="0" data-action="keyMoments" data-label="View Key Moment" aria-label="View key moment">
+              <img src="live-stream-assets/btn-key-moment-focused.svg" alt="">
+            </button>
+          </div>
+          <div class="group">
+            <button class="icon-btn" data-row="0" data-action="favorite" data-label="Add to Favorites" aria-label="Add to favorites">
+              <img src="live-stream-assets/btn-fav.svg" alt="">
+            </button>
+            <button class="icon-btn" data-row="0" data-action="subAudio" data-label="Subtitles &amp; Audio" aria-label="Subtitles and audio">
+              <img src="live-stream-assets/btn-sub-audio.svg" alt="">
+            </button>
+            <button class="icon-btn" data-row="0" data-action="settings" data-label="Settings" aria-label="Settings">
+              <img src="live-stream-assets/btn-settings.svg" alt="">
+            </button>
+          </div>
+        </div>
+
+        <div class="seek" data-row="1" id="seek">
+          <span class="time-start" id="timeStart">00:00</span>
+          <div class="track" id="track">
+            <!-- the bar itself (track colour, highlight sections, played part); in Key Moment mode it's cut into pieces -->
+            <div class="bar" id="bar">
+              <div class="km-segs" id="kmSegs"></div>
+              <div class="played" id="played"></div>
+            </div>
+            <div class="km-marks" id="kmMarks"></div>
+            <div class="km-pointer" id="kmPointer" aria-hidden="true">
+              <div class="preview-time" id="kmTime">00:00</div>
+              <i class="preview-arrow"></i>
+            </div>
+            <div class="km-card" id="kmCard" aria-live="polite">
+              <img src="live-stream-assets/background.png" alt="">
+              <div class="km-title" id="kmTitle"></div>
+              <span class="km-tag" id="kmTag"></span>
+            </div>
+            <div class="handle" id="handle"><img src="live-stream-assets/seek-handle.svg" alt=""></div>
+            <div class="preview" id="preview" aria-hidden="true">
+              <div class="preview-thumb" id="previewThumb"><img src="live-stream-assets/background.png" alt=""></div>
+              <div class="preview-time" id="previewTime">00:00</div>
+              <i class="preview-arrow"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="group">
+            <button class="chip" data-row="2" data-action="browse">Browse Channels</button>
+            <button class="chip" data-row="2" data-action="guide">Open Program Guide</button>
+            <button class="chip km-hint" data-row="2" data-action="kmSelect">Select Key Moment</button>
+          </div>
+          <div class="group">
+            <div class="badge viewers"><img src="live-stream-assets/icon-viewers.svg" alt="Viewers"><span>1.5 K</span></div>
+            <div class="badge live"><span class="dot"></span><span>LIVE</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ---------------- icon buttons: inline the SVGs so CSS can switch default/active ---------------- */
+  // Every button SVG is an 84px circle ("Background") followed by the icon group. The Key Moment file is exported in
+  // its active look (87px box with the ring and a 34.5px circle), so it's normalised to the same 84px default shape;
+  // the ring and the smaller circle then come from the .focused CSS like every other button.
+  document.querySelectorAll('.icon-btn > img').forEach(function(img){
+    fetch(img.getAttribute('src')).then(function(r){ return r.ok ? r.text() : Promise.reject(); }).then(function(text){
+      var svg = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement;
+      var bg = svg.querySelector('[id="Background"]');
+      if(!bg || !bg.nextElementSibling) return;
+      if(svg.getAttribute('viewBox') === '0 0 87 87'){
+        svg.setAttribute('viewBox', '1.5 1.5 84 84');
+        var ring = svg.querySelector('rect');
+        if(ring) ring.remove();
+        bg.setAttribute('r', '42');
+      }
+      svg.setAttribute('width', '84'); svg.setAttribute('height', '84');
+      svg.removeAttribute('style');
+      bg.setAttribute('class', 'btn-bg');
+      bg.nextElementSibling.setAttribute('class', 'btn-glyph');
+      svg.setAttribute('aria-hidden', 'true');
+      img.replaceWith(document.importNode(svg, true));
+    }).catch(function(){ /* keep the <img> */ });
+  });
+
+  /* ---------------- tooltips ---------------- */
+  document.querySelectorAll('.icon-btn').forEach(function(btn){
+    var tip = document.createElement('span');
+    tip.className = 'tooltip';
+    tip.innerHTML = '<span class="tooltip-body"></span><span class="tooltip-arrow"><i></i></span>';
+    tip.firstChild.textContent = btn.getAttribute('data-label');
+    btn.appendChild(tip);
+  });
+
+  /* ---------------- focus model ---------------- */
+  // Row 0: icon buttons, row 1: seek bar, row 2: text chips. Starts on the seek bar.
+  // Row 0 swaps between the normal buttons and Key Moment mode's Back + Watch Live (see enter/exitKeyMoments)
+  var allRow0 = Array.prototype.slice.call(document.querySelectorAll('[data-row="0"]'));
+  var normalRow0 = allRow0.filter(function(el){ return !el.classList.contains('km-only'); });
+  var kmRow0 = allRow0.filter(function(el){ return el.classList.contains('km-only'); });
+  // Row 2 swaps the same way: the two chips normally, "Select Key Moment" in Key Moment mode
+  var allRow2 = Array.prototype.slice.call(document.querySelectorAll('[data-row="2"]'));
+  var normalRow2 = allRow2.filter(function(el){ return !el.classList.contains('km-hint'); });
+  var kmRow2 = allRow2.filter(function(el){ return el.classList.contains('km-hint'); });
+  var rows = [
+    normalRow0,
+    [document.getElementById('seek')],
+    normalRow2
+  ];
+  // the first time ↑ is pressed it lands on Start Over (col 0); after that each row remembers its last focus
+  var colByRow = [0, 0, 0];
+
+  /* ---------------- live playback clock ---------------- */
+  // The bar spans the start of the live stream (left) to the live edge (right). live = seconds the stream has been
+  // running since the page opened; it always ticks. pos = seconds into the stream of the picture on screen; it ticks
+  // while playing and can't pass live. At the live edge the bar is full; pausing or skipping back leaves a grey gap.
+  // Left label = elapsed time of the picture on screen, starting at 00:00.
+  // FAST_SPEED = seconds of video moved per second the key is held (fast rewind / forward)
+  var SKIP_SECONDS = 10, FAST_SPEED = 10, HOLD_MS = 400, SCRUB_LINGER_MS = 1000;
+  var state = { row:1, col:0, live:0, pos:0, playing:true };
+
+  function pad(n){ return (n<10 ? '0' : '') + n; }
+  function elapsed(s){
+    var h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
+    return (h ? h + ':' + pad(m) : pad(m)) + ':' + pad(sec);
+  }
+
+  var timeStart = document.getElementById('timeStart');
+  var handleEl = document.getElementById('handle');
+  var liveBadge = document.querySelector('.badge.live');
+  var startOverBtn = document.querySelector('[data-action="startOver"]');
+  state.startedOver = false;
+
+  function setLabel(btn, label){
+    if(btn.getAttribute('data-label') === label) return;
+    btn.setAttribute('data-label', label);
+    btn.setAttribute('aria-label', label);
+    var body = btn.querySelector('.tooltip-body');
+    if(body) body.textContent = label;
+  }
+
+  function render(){
+    // clear whichever set of row-0 / row-2 items is switched off
+    allRow0.concat(allRow2).forEach(function(el){ el.classList.remove('focused'); });
+    rows.forEach(function(items, r){
+      items.forEach(function(el, c){ el.classList.toggle('focused', r===state.row && c===state.col); });
+    });
+    // while a key moment is selected (browsing), the handle shows that checkpoint; playback carries on underneath
+    var browsing = km.on && km.idx !== null;
+    var shownPos = browsing ? km.items[km.idx].start : state.pos;
+    var frac = state.live ? shownPos/state.live : 1, pct = (frac*100) + '%';
+    document.getElementById('played').style.width = pct;
+    handleEl.style.left = pct;
+    handleEl.classList.toggle('paused', !state.playing);
+    handleEl.setAttribute('aria-label', state.playing ? 'Pause' : 'Play');
+    timeStart.textContent = elapsed(Math.floor(shownPos));
+    renderScrub(frac);
+    renderKeyMoments();
+    liveBadge.classList.toggle('behind', state.pos < state.live);
+    // Start Over switches to Watch Live after it's used, and back once playback is at the live edge again
+    if(state.startedOver && state.pos >= state.live) state.startedOver = false;
+    setLabel(startOverBtn, state.startedOver ? 'Watch Live' : 'Start Over');
+    startOverBtn.classList.toggle('flipped', state.startedOver);
+  }
+
+  function seekTo(pos){ cancelSkipAnim(); state.pos = Math.max(0, Math.min(state.live, Math.round(pos))); }
+  // any other seek takes over from a running 10s glide
+  function cancelSkipAnim(){ if(skipAnim){ cancelAnimationFrame(skipAnim.raf); clearTimeout(skipAnim.fallback); skipAnim = null; } }
+  function togglePlay(){ state.playing = !state.playing; render(); }
+  setInterval(function(){
+    state.live++;
+    // normal playback pauses while fast-scrubbing; the scrub timer moves the playhead instead
+    if(state.playing && scrub.mode !== 'fast'){
+      state.pos = Math.min(state.live, state.pos + 1);
+      if(skipAnim){ skipAnim.from += 1; skipAnim.to = Math.min(state.live, skipAnim.to + 1); }
+    }
+    render();
+  }, 1000);
+
+  /* ---------------- rewind / forward on the seek bar ---------------- */
+  // Tap <- / -> : jump 10s (handle shows the circular-arrow glyph).
+  // Hold <- / -> : fast rewind / forward at 2x until released (handle shows the double-triangle glyph).
+  // Both show the thumbnail + time preview; rewind mirrors the glyph. The glyph and preview linger 1s after.
+  var scrub = { mode:null, dir:1 }, fastTimer = null, lingerTimer = null, press = null;
+  var seekEl = document.getElementById('seek'), trackEl = document.getElementById('track');
+  var previewEl = document.getElementById('preview'), previewThumb = document.getElementById('previewThumb');
+  var previewTime = document.getElementById('previewTime');
+  var THUMB_W = 320;
+
+  function renderScrub(frac){
+    handleEl.classList.toggle('skip', scrub.mode === 'skip');
+    handleEl.classList.toggle('fast', scrub.mode === 'fast');
+    var dirGroup = handleEl.querySelector('.glyph-dir');
+    if(dirGroup) dirGroup.setAttribute('transform', scrub.dir < 0 ? 'translate(82.5 0) scale(-1 1)' : '');
+    seekEl.classList.toggle('scrubbing', !!scrub.mode);
+    if(!scrub.mode) return;
+    // preview follows the handle; the thumbnail is clamped so it never leaves the track
+    var trackW = trackEl.offsetWidth, x = frac * trackW;
+    previewEl.style.left = x + 'px';
+    var thumbLeft = Math.max(0, Math.min(trackW - THUMB_W, x - THUMB_W/2));
+    previewThumb.style.left = (thumbLeft - x) + 'px';
+    previewTime.textContent = elapsed(Math.floor(state.pos));
+  }
+
+  function showScrub(mode, dir){
+    clearTimeout(lingerTimer);
+    scrub.mode = mode; scrub.dir = dir;
+  }
+  function endScrubSoon(){
+    clearTimeout(lingerTimer);
+    lingerTimer = setTimeout(function(){ scrub.mode = null; render(); }, SCRUB_LINGER_MS);
+  }
+
+  // A 10s tap glides the playhead to its target over SKIP_ANIM_MS (ease-out) instead of jumping.
+  // Taps during a glide stack onto its target; the 1s playback tick shifts the glide along with it.
+  var SKIP_ANIM_MS = 350, skipAnim = null;
+  function skip(dir){
+    showScrub('skip', dir);
+    var base = skipAnim ? skipAnim.to : state.pos;
+    var to = Math.max(0, Math.min(state.live, Math.round(base + dir*SKIP_SECONDS)));
+    cancelSkipAnim();
+    skipAnim = { from:state.pos, to:to, t0:performance.now() };
+    function finish(){ var a = skipAnim; cancelSkipAnim(); state.pos = a.to; render(); }
+    function step(now){
+      var t = Math.min(1, (now - skipAnim.t0) / SKIP_ANIM_MS);
+      var ease = 1 - Math.pow(1 - t, 3);
+      state.pos = skipAnim.from + (skipAnim.to - skipAnim.from) * ease;
+      render();
+      if(t < 1) skipAnim.raf = requestAnimationFrame(step);
+      else finish();
+    }
+    skipAnim.raf = requestAnimationFrame(step);
+    // if no frames are drawn (e.g. background tab), still land on the target
+    skipAnim.fallback = setTimeout(finish, SKIP_ANIM_MS + 100);
+    endScrubSoon();
+  }
+  function startFast(dir){
+    cancelSkipAnim();
+    showScrub('fast', dir);
+    cancelAnimationFrame(fastTimer);
+    // advance every animation frame by the real time elapsed, so the handle glides at FAST_SPEED
+    var last = performance.now();
+    function step(now){
+      var dt = Math.min(0.25, (now - last) / 1000);  // cap so a stalled frame (e.g. tab in background) doesn't jump
+      last = now;
+      state.pos = Math.max(0, Math.min(state.live, state.pos + dir*FAST_SPEED*dt));
+      render();
+      fastTimer = requestAnimationFrame(step);
+    }
+    fastTimer = requestAnimationFrame(step);
+    render();
+  }
+  function stopFast(){
+    cancelAnimationFrame(fastTimer); fastTimer = null;
+    state.pos = Math.floor(state.pos);
+    render();
+    endScrubSoon();
+  }
+
+  // Key handling for <- / -> while the seek bar is focused: decide tap vs hold on release / after HOLD_MS
+  function seekKeyDown(dir){
+    if(press) return;
+    press = { dir:dir, fast:false };
+    press.timer = setTimeout(function(){
+      press.fast = true;
+      // holding from a selected checkpoint scrubs on from that checkpoint (and ends the browse)
+      if(km.on && km.idx !== null){ state.pos = km.items[km.idx].start; km.idx = null; }
+      startFast(dir);
+    }, HOLD_MS);
+  }
+  function seekKeyUp(){
+    if(!press) return;
+    clearTimeout(press.timer);
+    if(press.fast) stopFast();
+    else if(km.on) kmStep(press.dir);   // Key Moment mode: a tap steps between checkpoints
+    else skip(press.dir);
+    press = null;
+  }
+  window.addEventListener('keyup', function(e){
+    if(e.key === 'ArrowLeft' || e.key === 'ArrowRight') seekKeyUp();
+  });
+  window.addEventListener('blur', seekKeyUp);
+
+  /* ---------------- Key Moment mode ---------------- */
+  // Demo highlights: s/e place each one as a fraction of the stream so far (positions taken from the reference
+  // design). On entering the mode they become fixed stream times (start/end seconds), so a checkpoint's time never
+  // changes; as live moves on, the checkpoints drift left on the bar like a real live timeline.
+  var KEY_MOMENTS = [
+    { s:.259, e:.410, title:'Opening tip-off',  tag:'Tip-off' },
+    { s:.506, e:.522, title:'Fast-break dunk',  tag:'Dunk' },
+    { s:.618, e:.635, title:'Corner three',     tag:'3-Pointer' },
+    { s:.730, e:.774, title:'Chase-down block', tag:'Block' },
+    { s:.869, e:.912, title:'Half-time buzzer-beater', tag:'Buzzer-beater' }
+  ];
+  var km = { on:false, idx:null, items:[] };
+  var kmSegs = document.getElementById('kmSegs'), kmMarks = document.getElementById('kmMarks');
+  var kmCard = document.getElementById('kmCard');
+  var SPARKLE = '';   // sparkle path from the Key Moment button icon, loaded below
+  getText('live-stream-assets/btn-key-moment-focused.svg').then(function(t){
+    var p = new DOMParser().parseFromString(t, 'image/svg+xml').querySelector('[id="Icon"] path');
+    if(p) SPARKLE = p.getAttribute('d');
+  }).catch(function(){});
+
+  function enterKeyMoments(){
+    km.on = true; km.idx = null;
+    km.items = KEY_MOMENTS.map(function(h){
+      return { start:h.s*state.live, end:h.e*state.live, title:h.title, tag:h.tag };
+    });
+    kmSegs.innerHTML = ''; kmMarks.innerHTML = '';
+    km.items.forEach(function(item, i){
+      var seg = document.createElement('div'); seg.className = 'km-seg';
+      kmSegs.appendChild(seg); item.seg = seg;
+      var mark = document.createElement('div'); mark.className = 'km-mark'; mark.setAttribute('data-km', i);
+      // sparkle glyph sits at 43.5,43.5 in its 87px source box; crop to the icon's own ~40px area
+      mark.innerHTML = SPARKLE ? '<svg viewBox="23.5 23.5 40 40" aria-hidden="true"><path fill="#3B3C3E" d="' + SPARKLE + '"/></svg>' : '';
+      kmMarks.appendChild(mark); item.mark = mark;
+    });
+    canvas.classList.add('km');
+    rows[0] = kmRow0; colByRow[0] = 0;
+    rows[2] = kmRow2; colByRow[2] = 0;
+    state.row = 1; state.col = 0;   // keep watching live on the seek bar
+    render();
+  }
+  function exitKeyMoments(){
+    if(km.idx !== null) state.playing = true;   // leaving mid-browse: carry on playing where the stream was
+    km.on = false; km.idx = null;
+    canvas.classList.remove('km');
+    rows[0] = normalRow0; colByRow[0] = 1;   // coming back up lands on "View Key Moment"
+    rows[2] = normalRow2; colByRow[2] = 0;
+    if(state.row === 0) state.col = 1;
+    if(state.row === 2) state.col = 0;
+    render();
+  }
+  // Watch Live (Key Moment mode): drop the selection and play from the live edge, staying in the mode,
+  // with focus moved down to the seek bar
+  function kmWatchLive(){
+    km.idx = null;
+    if(state.row === 0) colByRow[0] = state.col;
+    state.row = 1; state.col = 0;
+    seekTo(state.live);
+    state.playing = true;
+    state.startedOver = false;
+    render();
+  }
+  // Browsing checkpoints on the seek bar:
+  //  <- from the playhead selects the nearest checkpoint behind it (at live: the last one), then steps back one by one.
+  //  -> steps forward; -> on the last checkpoint goes back to watching live.
+  //  While a checkpoint is selected playback is paused; Enter plays from it (jumpToMoment).
+  function kmStep(dir){
+    var n = km.items.length;
+    clearTimeout(lingerTimer); scrub.mode = null;   // drop a lingering fast/skip glyph from a previous scrub
+    if(km.idx === null){
+      if(dir > 0) return;
+      var pick = -1;
+      for(var i = 0; i < n; i++) if(km.items[i].start < state.pos - 0.05) pick = i;
+      if(pick < 0) return;   // nothing behind the playhead
+      km.idx = pick;
+      state.playing = false;
+    } else if(dir < 0){
+      km.idx = Math.max(0, km.idx - 1);
+    } else if(km.idx >= n - 1){
+      kmWatchLive(); return;
+    } else {
+      km.idx++;
+    }
+    render();
+  }
+  // Enter / click: play from the selected moment (the selection is done once playback is there)
+  function jumpToMoment(i){
+    cancelSkipAnim();
+    state.pos = km.items[i].start;
+    state.playing = true;
+    km.idx = null;
+  }
+  // Key Moment mode: cut the bar into separate pieces with a 4px gap (as in Figma's segmented seek bar) at the start
+  // and end of every highlight. A mask does the cutting, so grey, blue and the played part all break at the same gaps.
+  var barEl = document.getElementById('bar'), GAP = 4, barMaskKey = '';
+  function barFrac(sec){ return state.live ? Math.min(1, sec/state.live) : 0; }
+  function renderBarGaps(){
+    var cuts = [];
+    if(km.on) km.items.forEach(function(item){ cuts.push(barFrac(item.start), barFrac(item.end)); });
+    // cut points move as live grows, but only rebuild the mask when they've actually shifted
+    var key = km.on ? cuts.map(function(c){ return c.toFixed(4); }).join(',') : '';
+    if(key === barMaskKey) return;
+    barMaskKey = key;
+    var mask = '';
+    if(km.on){
+      var stops = [];
+      cuts.forEach(function(c){
+        var p = (c*100).toFixed(3) + '%', h = GAP/2 + 'px';
+        stops.push('#000 calc(' + p + ' - ' + h + ')', 'transparent calc(' + p + ' - ' + h + ')',
+                   'transparent calc(' + p + ' + ' + h + ')', '#000 calc(' + p + ' + ' + h + ')');
+      });
+      mask = 'linear-gradient(to right, ' + stops.join(', ') + ')';
+    }
+    barEl.style.webkitMaskImage = mask;
+    barEl.style.maskImage = mask;
+  }
+
+  function renderKeyMoments(){
+    seekEl.classList.toggle('km', km.on);
+    seekEl.classList.toggle('km-at', km.on && km.idx !== null);
+    renderBarGaps();
+    if(!km.on) return;
+    km.items.forEach(function(item){
+      var s = barFrac(item.start), e = barFrac(item.end);
+      item.seg.style.left = (s*100) + '%';
+      item.seg.style.width = ((e-s)*100) + '%';
+      item.mark.style.left = (s*100) + '%';
+    });
+    if(km.idx === null) return;
+    var item = km.items[km.idx];
+    document.getElementById('kmTitle').textContent = item.title;
+    document.getElementById('kmTag').textContent = item.tag;
+    // time + pointer sit right over the checkpoint; the card above them is kept inside the track
+    var trackW = trackEl.offsetWidth, x = barFrac(item.start)*trackW;
+    document.getElementById('kmPointer').style.left = x + 'px';
+    document.getElementById('kmTime').textContent = elapsed(Math.floor(item.start));
+    kmCard.style.left = Math.max(0, Math.min(trackW - kmCard.offsetWidth, x - kmCard.offsetWidth/2)) + 'px';
+  }
+
+  function move(dRow, dCol){
+    if(dRow){
+      var r = Math.max(0, Math.min(rows.length-1, state.row + dRow));
+      if(r === state.row) return;
+      colByRow[state.row] = state.col;
+      state.row = r;
+      state.col = Math.min(colByRow[r], rows[r].length-1);
+    } else if(state.row === 1){
+      // on the seek bar, left/right jump 10s (keyboard taps/holds go through seekKeyDown instead)
+      skip(dCol);
+      return;
+    } else {
+      state.col = Math.max(0, Math.min(rows[state.row].length-1, state.col + dCol));
+    }
+    render();
+  }
+
+  /* ---------------- seek handle: inline so its glyph can change ---------------- */
+  // The Figma handle shows the pause glyph (shown while playing). Added glyphs, all centred in the same 24px circle
+  // (cx 41.25, cy 38.25): play triangle (paused), the Start Over arrow mirrored to point clockwise (10s skip), and
+  // a double outlined triangle (2x fast). Skip/fast sit in .glyph-dir, which renderScrub() mirrors for rewind.
+  var handleImg = handleEl.querySelector('img');
+  function getText(url){ return fetch(url).then(function(r){ return r.ok ? r.text() : Promise.reject(); }); }
+  Promise.all([getText(handleImg.getAttribute('src')), getText('live-stream-assets/btn-start-over.svg')]).then(function(texts){
+    var parse = function(t){ return new DOMParser().parseFromString(t, 'image/svg+xml').documentElement; };
+    var svg = parse(texts[0]);
+    var pause = svg.querySelector('[id="Icon"] path');
+    var arrow = parse(texts[1]).querySelector('[id="shape"]');
+    if(!pause || !arrow) return;
+    var NS = 'http://www.w3.org/2000/svg', ink = '#3B3C3E';
+    pause.setAttribute('class', 'glyph-pause');
+
+    var play = document.createElementNS(NS, 'path');
+    play.setAttribute('class', 'glyph-play');
+    play.setAttribute('d', 'M36.5 28.25 L51.5 38.25 L36.5 48.25 Z');
+    play.setAttribute('fill', ink); play.setAttribute('stroke', ink);
+    play.setAttribute('stroke-width', '2.5'); play.setAttribute('stroke-linejoin', 'round');
+
+    var dir = document.createElementNS(NS, 'g');
+    dir.setAttribute('class', 'glyph-dir');
+    // Start Over's arrow (x 21-59.5, y 24.5-59.5 in an 84 box) scaled to ~22px and mirrored so it turns clockwise
+    var skipGlyph = document.createElementNS(NS, 'path');
+    skipGlyph.setAttribute('class', 'glyph-skip');
+    skipGlyph.setAttribute('d', arrow.getAttribute('d'));
+    skipGlyph.setAttribute('fill', ink);
+    skipGlyph.setAttribute('transform', 'translate(41.25 38.25) scale(-0.6 0.6) translate(-40.25 -42)');
+    var fastGlyph = document.createElementNS(NS, 'path');
+    fastGlyph.setAttribute('class', 'glyph-fast');
+    fastGlyph.setAttribute('d', 'M29.75 30.25 L40.25 38.25 L29.75 46.25 Z M41.25 30.25 L51.75 38.25 L41.25 46.25 Z');
+    fastGlyph.setAttribute('fill', 'none'); fastGlyph.setAttribute('stroke', ink);
+    fastGlyph.setAttribute('stroke-width', '2.25'); fastGlyph.setAttribute('stroke-linejoin', 'round');
+    dir.appendChild(skipGlyph); dir.appendChild(fastGlyph);
+
+    pause.parentNode.appendChild(play);
+    pause.parentNode.appendChild(dir);
+    svg.removeAttribute('style');
+    svg.setAttribute('aria-hidden', 'true');
+    handleImg.replaceWith(document.importNode(svg, true));
+    render();
+  }).catch(function(){ /* keep the <img> */ });
+
+  /* ---------------- actions ---------------- */
+  var toastEl = document.getElementById('toast'), toastTimer;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 1800);
+  }
+
+  var favorite = false;
+  function activate(){
+    var el = rows[state.row][state.col];
+    var action = el.getAttribute('data-action');
+    if(state.row === 1 && km.on && km.idx !== null){ jumpToMoment(km.idx); render(); return; }
+    if(state.row === 1){ togglePlay(); return; }
+    if(action === 'keyMoments'){ enterKeyMoments(); return; }
+    if(action === 'kmBack'){ exitKeyMoments(); state.row = 0; state.col = 1; render(); return; }
+    if(action === 'kmLive'){ kmWatchLive(); return; }
+    // Select Key Moment: go to the seek bar with the nearest checkpoint selected (same as <- there)
+    if(action === 'kmSelect'){ state.row = 1; state.col = 0; km.idx = null; kmStep(-1); return; }
+    if(action === 'favorite'){ favorite = !favorite; toast(favorite ? 'Added to Favorites' : 'Removed from Favorites'); return; }
+    if(action === 'startOver'){
+      if(state.startedOver){ seekTo(state.live); state.startedOver = false; }   // Watch Live: back to the live edge
+      else { seekTo(0); state.startedOver = state.live > 0; }                  // Start Over: back to 00:00
+      state.playing = true;
+      render();
+      return;
+    }
+    toast(el.getAttribute('data-label') || el.textContent + ' (demo)');
+  }
+
+  // Back to the Content Picker: return via history when we came from it, otherwise open it
+  function goBackToPicker(){
+    try {
+      if(document.referrer && /content-picker\.html/.test(document.referrer) && history.length > 1){ history.back(); return; }
+    } catch(e){}
+    window.location.href = 'content-picker.html';
+  }
+
+  /* ---------------- remote / keyboard ---------------- */
+  var WAKE_KEYS = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' '];
+  window.addEventListener('keydown', function(e){
+    if(e.key==='Escape' || e.key==='Backspace'){
+      e.preventDefault();
+      if(km.on){ wake(); exitKeyMoments(); return; }   // first Back leaves Key Moment mode
+      goBackToPicker(); return;
+    }
+    // while the UI is hidden, a direction key or Enter only wakes it (so nothing changes unseen)
+    if(WAKE_KEYS.indexOf(e.key) !== -1){
+      var wasHidden = isHidden();
+      wake();
+      if(wasHidden){ e.preventDefault(); return; }
+    }
+    // <- / -> on the seek bar: hold = fast rewind/forward; tap = 10s jump (in Key Moment mode: next/previous
+    // checkpoint). Tap vs hold is decided in seekKeyDown/seekKeyUp; auto-repeat events are ignored.
+    if(state.row === 1 && (e.key==='ArrowLeft' || e.key==='ArrowRight')){
+      e.preventDefault();
+      if(!e.repeat) seekKeyDown(e.key==='ArrowRight' ? 1 : -1);
+      return;
+    }
+    if(e.repeat && e.key==='Enter') return;
+    var handled = true;
+    if(e.key==='ArrowUp') move(-1, 0);
+    else if(e.key==='ArrowDown') move(1, 0);
+    else if(e.key==='ArrowLeft') move(0, -1);
+    else if(e.key==='ArrowRight') move(0, 1);
+    else if(e.key==='Enter' || e.key===' ') activate();
+    else handled = false;
+    if(handled) e.preventDefault();
+  });
+
+  /* ---------------- mouse / touch ---------------- */
+  // row 0's contents change with Key Moment mode, so each button looks up its column when used
+  [allRow0, rows[1], allRow2].forEach(function(items, r){
+    items.forEach(function(el){
+      function focusIt(){ var c = rows[r].indexOf(el); if(c < 0) return false; state.row = r; state.col = c; render(); return true; }
+      el.addEventListener('mouseenter', focusIt);
+      if(r !== 1) el.addEventListener('click', function(){ if(focusIt()) activate(); });
+    });
+  });
+  // clicking the handle plays/pauses; clicking anywhere else on the track seeks there
+  document.getElementById('track').addEventListener('click', function(e){
+    state.row = 1; state.col = 0;
+    if(handleEl.contains(e.target)){ togglePlay(); return; }
+    var mark = e.target.closest && e.target.closest('.km-mark');
+    if(mark){ jumpToMoment(+mark.getAttribute('data-km')); render(); return; }
+    var rect = this.getBoundingClientRect();
+    seekTo((e.clientX - rect.left) / rect.width * state.live);
+    render();
+  });
+
+  /* ---------------- layout scaling (same approach as the other prototypes) ---------------- */
+  var DESIGN_W = 1920, DESIGN_H = 1080;
+  var frame = document.getElementById('tv-frame');
+  var canvas = document.getElementById('canvas');
+  // Desktop (default): header and controls are drawn at 0.625 of the Figma TV sizes in real screen pixels
+  // (24px text -> 15px, 84px buttons -> ~52px), whatever the window size. ?mode=tv keeps the exact Figma sizes.
+  var TV_MODE = /[?&]mode=tv\b/.test(location.search);
+  var DESKTOP_UI = 0.625;
+  function layout(){
+    var scale = Math.min(window.innerWidth/DESIGN_W, window.innerHeight/DESIGN_H);
+    frame.style.width = (DESIGN_W*scale)+'px';
+    frame.style.height = (DESIGN_H*scale)+'px';
+    canvas.style.transform = 'scale('+scale+')';
+    var ui = TV_MODE ? 1 : Math.min(1, DESKTOP_UI/scale);
+    canvas.style.setProperty('--ui', ui);
+  }
+  window.addEventListener('resize', layout);
+  layout();
+
+  /* ---------------- auto-hide ("wake") ---------------- */
+  // Shown on arrival, hidden after 3s without input; direction keys / Enter (and mouse movement) wake it again.
+  var HIDE_AFTER = 3000, hideTimer;
+  function isHidden(){ return canvas.classList.contains('ui-hidden'); }
+  function wake(){
+    canvas.classList.remove('ui-hidden');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function(){ canvas.classList.add('ui-hidden'); }, HIDE_AFTER);
+  }
+  frame.addEventListener('mousemove', wake);
+  frame.addEventListener('click', wake);
+
+  render();
+  wake();
+})();
+</script>
+</body>
+</html>

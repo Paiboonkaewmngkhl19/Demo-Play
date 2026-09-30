@@ -3,8 +3,9 @@
   Content Picker — TV-style page where the viewer selects what to open.
   Same design language as key-moment-navigator.html (Aurora palette, 1920x1080 canvas scaled to the window,
   focus ring + scale on the focused item). Works with mouse/touch and with a TV remote (arrow keys + Enter).
-  Options: Live Sports (Key Moment Navigator), Concert (Multiview), Vertical (the Vertical Discovery Feed app at the
-  project root) and Home (home.html at the project root, the Stream Home prototype). Each destination has a Back control that returns here.
+  Options: Key Moments (Key Moment Navigator), Multi-View (Multiview), Clips Reels (the Vertical Discovery Feed app at the
+  project root), Home (home.html at the project root, the Stream Home prototype) and Live Stream (live-stream.html, the
+  live-channel player from Figma). Each destination has a Back control that returns here.
 -->
 <html lang="en">
 <head>
@@ -68,7 +69,7 @@
   #grid{
     position:absolute; left:152px; top:376px;
     width:1616px;
-    display:grid; grid-template-columns:repeat(4, 374px); grid-auto-rows:380px; gap:32px;
+    display:grid; grid-template-columns:repeat(5, 1fr); grid-auto-rows:380px; gap:32px;
   }
   .card{
     --accent:#00ff87;
@@ -111,12 +112,18 @@
     position:absolute; left:152px; right:152px; bottom:84px;
     display:flex; align-items:center; justify-content:center;
   }
-  .hints{ display:flex; gap:40px; font-size:18px; font-weight:500; color:var(--ink-faint); }
+  .hints{ display:flex; align-items:center; gap:40px; font-size:18px; font-weight:500; color:var(--ink-faint); }
+  .hints span{ display:inline-flex; align-items:center; }
+  /* every key chip shares one height so the row lines up */
   .hints kbd{
     font:inherit; font-weight:700; color:var(--ink);
-    padding:4px 10px; margin-right:8px; border-radius:8px;
+    display:inline-flex; align-items:center; justify-content:center;
+    height:40px; box-sizing:border-box;
+    padding:0 12px; margin-right:10px; border-radius:8px;
     background:var(--chip-bg); border:1px solid var(--chip-border);
   }
+  /* the direction arrows are drawn larger so they read clearly on a TV, inside the same chip height */
+  .hints kbd.arrows{ font-size:26px; line-height:1; padding-bottom:3px; }
 </style>
 </head>
 <body>
@@ -133,8 +140,9 @@
 
     <footer>
       <div class="hints">
-        <span><kbd>←↑↓→</kbd>Move</span>
+        <span><kbd class="arrows">←↑↓→</kbd>Move</span>
         <span><kbd>Enter</kbd>Open</span>
+        <span><kbd>Esc</kbd>Back</span>
       </div>
     </footer>
   </div>
@@ -148,15 +156,17 @@
     { id:'sports',   name:'Key Moments', desc:'Jump straight to goals, cards and highlights', accent:'#00E676', icon:'ball',  href:'key-moment-navigator.html' },
     { id:'concert',  name:'Multi-View',  desc:'Watch several camera angles side by side', accent:'#E040FB', icon:'music', href:'multiview-prototype.html' },
     { id:'vertical', name:'Clips Reels', desc:'Swipe through short vertical clips', accent:'#FF6D00', icon:'phone', href:'../?from=picker' },
-    { id:'home',     name:'Home',        desc:'Smart TV–style home with content rails', accent:'#00E5FF', icon:'home',  href:'../home.html' }
+    { id:'home',     name:'Home',        desc:'Smart TV–style home with content rails', accent:'#00E5FF', icon:'home',  href:'../home.html' },
+    { id:'live',     name:'Live Stream', desc:'Watch live channels with full player controls', accent:'#FF4D6D', icon:'live',  href:'live-stream.html' }
   ];
-  var COLS = 4;
+  var COLS = 5;
 
   var ICONS = {
     ball:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.5 2.5-1.3 4h-4.4l-1.3-4z"/><path d="M12 3v5M20.5 9.5L15.5 10.5M17.5 19l-3.3-4.5M6.5 19l3.3-4.5M3.5 9.5l5 1"/></svg>',
     music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
-    home:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><path d="M10 20v-6h4v6"/></svg>'
+    home:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><path d="M10 20v-6h4v6"/></svg>',
+    live:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>'
   };
 
   /* ---------------- state ---------------- */
