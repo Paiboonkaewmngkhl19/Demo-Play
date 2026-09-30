@@ -471,7 +471,7 @@
     // while a key moment is selected (browsing), the handle shows that checkpoint; playback carries on underneath
     var browsing = km.on && km.idx !== null;
     var shownPos = browsing ? km.items[km.idx].start : state.pos;
-    var frac = state.live ? shownPos/state.live : 1, pct = (frac*100) + '%';
+    var frac = barSpan() ? Math.min(1, shownPos/barSpan()) : 1, pct = (frac*100) + '%';
     document.getElementById('played').style.width = pct;
     handleEl.style.left = pct;
     handleEl.classList.toggle('paused', !state.playing);
@@ -606,8 +606,9 @@
 
   /* ---------------- Key Moment mode ---------------- */
   // Demo highlights: s/e place each one as a fraction of the stream so far (positions taken from the reference
-  // design). On entering the mode they become fixed stream times (start/end seconds), so a checkpoint's time never
-  // changes; as live moves on, the checkpoints drift left on the bar like a real live timeline.
+  // design). On entering the mode they become fixed stream times (start/end seconds), and the bar's scale is frozen
+  // to the stream length at that moment (km.span), so checkpoints keep both their time and their spot on the bar.
+  // The bar's right end still stands for live: watching live keeps it full while the time carries on counting.
   var KEY_MOMENTS = [
     { s:.259, e:.410, title:'Opening tip-off',  tag:'Tip-off' },
     { s:.506, e:.522, title:'Fast-break dunk',  tag:'Dunk' },
@@ -615,7 +616,7 @@
     { s:.730, e:.774, title:'Chase-down block', tag:'Block' },
     { s:.869, e:.912, title:'Half-time buzzer-beater', tag:'Buzzer-beater' }
   ];
-  var km = { on:false, idx:null, items:[] };
+  var km = { on:false, idx:null, items:[], span:0 };
   var kmSegs = document.getElementById('kmSegs'), kmMarks = document.getElementById('kmMarks');
   var kmCard = document.getElementById('kmCard');
   var SPARKLE = '';   // sparkle path from the Key Moment button icon, loaded below
@@ -626,6 +627,7 @@
 
   function enterKeyMoments(){
     km.on = true; km.idx = null;
+    km.span = Math.max(1, state.live);
     km.items = KEY_MOMENTS.map(function(h){
       return { start:h.s*state.live, end:h.e*state.live, title:h.title, tag:h.tag };
     });
@@ -665,22 +667,35 @@
     state.startedOver = false;
     render();
   }
+  // Start of the stream (Key Moment mode): drop the selection and play from 00:00, like Start Over
+  function kmStartOver(){
+    km.idx = null;
+    seekTo(0);
+    state.playing = true;
+    state.startedOver = state.live > 0;
+    render();
+  }
   // Browsing checkpoints on the seek bar:
-  //  <- from the playhead selects the nearest checkpoint behind it (at live: the last one), then steps back one by one.
+  //  From the playhead, <- selects the nearest checkpoint behind it (at live: the last one; none behind: the first)
+  //  and -> the next one ahead; then taps step one by one. <- on the first checkpoint goes back to the start (00:00).
   //  -> steps forward; -> on the last checkpoint goes back to watching live.
   //  While a checkpoint is selected playback is paused; Enter plays from it (jumpToMoment).
   function kmStep(dir){
     var n = km.items.length;
     clearTimeout(lingerTimer); scrub.mode = null;   // drop a lingering fast/skip glyph from a previous scrub
     if(km.idx === null){
-      if(dir > 0) return;
-      var pick = -1;
-      for(var i = 0; i < n; i++) if(km.items[i].start < state.pos - 0.05) pick = i;
-      if(pick < 0) return;   // nothing behind the playhead
+      // not browsing yet: -> picks the next checkpoint ahead of the playhead, <- the nearest one behind it
+      // (or the first one if nothing is behind, e.g. right after going back to the start)
+      var pick = -1, i;
+      if(dir > 0){ for(i = n - 1; i >= 0; i--) if(km.items[i].start > state.pos + 0.05) pick = i; }
+      else { for(i = 0; i < n; i++) if(km.items[i].start < state.pos - 0.05) pick = i; if(pick < 0 && n) pick = 0; }
+      if(pick < 0) return;   // -> at live: nothing ahead
       km.idx = pick;
       state.playing = false;
+    } else if(dir < 0 && km.idx === 0){
+      kmStartOver(); return;              // no earlier checkpoint: <- goes back to the start
     } else if(dir < 0){
-      km.idx = Math.max(0, km.idx - 1);
+      km.idx--;
     } else if(km.idx >= n - 1){
       kmWatchLive(); return;
     } else {
@@ -695,24 +710,31 @@
     state.playing = true;
     km.idx = null;
   }
-  // Key Moment mode: cut the bar into separate pieces with a 4px gap (as in Figma's segmented seek bar) at the start
-  // and end of every highlight. A mask does the cutting, so grey, blue and the played part all break at the same gaps.
-  var barEl = document.getElementById('bar'), GAP = 4, barMaskKey = '';
-  function barFrac(sec){ return state.live ? Math.min(1, sec/state.live) : 0; }
+  // Key Moment mode: cut the bar into separate pieces. A mask does the cutting, so grey, blue and the played part all
+  // break at the same places:
+  //  - at each checkpoint, the bar before it stops MARK_CLEAR px short of the marker's edge, so the marker sits in
+  //    its own gap (the highlight starts under the marker and shows from its right edge on)
+  //  - at the end of each highlight, a GAP px gap (as in Figma's segmented seek bar)
+  var barEl = document.getElementById('bar'), GAP = 4, MARK_R = 14, MARK_CLEAR = 6, barMaskKey = '';
+  // seconds the whole bar represents: frozen while in Key Moment mode, otherwise the stream so far
+  function barSpan(){ return km.on ? km.span : state.live; }
+  function barFrac(sec){ return barSpan() ? Math.min(1, sec/barSpan()) : 0; }
   function renderBarGaps(){
-    var cuts = [];
-    if(km.on) km.items.forEach(function(item){ cuts.push(barFrac(item.start), barFrac(item.end)); });
-    // cut points move as live grows, but only rebuild the mask when they've actually shifted
-    var key = km.on ? cuts.map(function(c){ return c.toFixed(4); }).join(',') : '';
+    var cuts = [];   // [fraction, px before, px after]: transparent from (fraction - before) to (fraction + after)
+    if(km.on) km.items.forEach(function(item){
+      cuts.push([barFrac(item.start), MARK_R + MARK_CLEAR, 0], [barFrac(item.end), GAP/2, GAP/2]);
+    });
+    // only rebuild the mask when the cut points have actually changed
+    var key = km.on ? cuts.map(function(c){ return c[0].toFixed(4); }).join(',') : '';
     if(key === barMaskKey) return;
     barMaskKey = key;
     var mask = '';
     if(km.on){
       var stops = [];
       cuts.forEach(function(c){
-        var p = (c*100).toFixed(3) + '%', h = GAP/2 + 'px';
-        stops.push('#000 calc(' + p + ' - ' + h + ')', 'transparent calc(' + p + ' - ' + h + ')',
-                   'transparent calc(' + p + ' + ' + h + ')', '#000 calc(' + p + ' + ' + h + ')');
+        var p = (c[0]*100).toFixed(3) + '%';
+        var from = 'calc(' + p + ' - ' + c[1] + 'px)', to = 'calc(' + p + ' + ' + c[2] + 'px)';
+        stops.push('#000 ' + from, 'transparent ' + from, 'transparent ' + to, '#000 ' + to);
       });
       mask = 'linear-gradient(to right, ' + stops.join(', ') + ')';
     }
@@ -889,8 +911,8 @@
     if(handleEl.contains(e.target)){ togglePlay(); return; }
     var mark = e.target.closest && e.target.closest('.km-mark');
     if(mark){ jumpToMoment(+mark.getAttribute('data-km')); render(); return; }
-    var rect = this.getBoundingClientRect();
-    seekTo((e.clientX - rect.left) / rect.width * state.live);
+    var rect = this.getBoundingClientRect(), f = (e.clientX - rect.left) / rect.width;
+    seekTo(f >= 0.995 ? state.live : f * barSpan());   // the far right end always means live
     render();
   });
 
