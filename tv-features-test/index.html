@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<!--
+  Key Moment Navigator — sports player prototype with highlight-flag remote navigation.
+  Video/photo credits (Pexels License — free for commercial & personal use):
+    Stadium wide shot: "Football Match on Stadium" by Tio Nazih — https://www.pexels.com/video/football-match-on-stadium-11918917/
+    Goal celebration:  "Exciting Football Goal Celebration on Field" by Oğuzhan Çoban — https://www.pexels.com/video/exciting-football-goal-celebration-on-field-31510089/
+    Red card photo:    "Referee showing red card" by BOOM Photography — https://www.pexels.com/photo/referee-showing-red-card-12585892/
+  Hotlinked directly (not embedded) — this file must be opened with an internet connection for the clips to load.
+  If a link has gone stale, open the source pages above and swap the <source>/<img> URLs in this file.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key Moment Navigator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Aurora Boreal Nórdica — Nordic aurora borealis palette */
+    --bg-0:#050b1a;        /* Deep Midnight */
+    --bg-1:#0a1628;        /* Arctic Blue */
+    --bg-2:#122241;        /* elevated navy surface */
+    --ink:#e8f4f8;         /* Frost White — primary text */
+    --ink-dim:#b9cbd4;
+    --ink-faint:rgba(232,244,248,0.55);
+    --live:#ff6ec7;        /* Glacier Pink — urgent / live / red-card accent */
+    --progress-track:rgba(232,244,248,0.18);
+    --progress-fill:#00ff87; /* Aurora Green */
+    --card-title-bg:#1b2c46;
+    --chip-bg:rgba(232,244,248,0.07);
+    --chip-border:rgba(232,244,248,0.16);
+    --focus-ring:#00ff87;  /* Aurora Green focus */
+    --focus-glow:rgba(0,255,135,0.55);
+    --yellow-card:#e8c468; /* muted gold — yellow-card semantic, sat. capped to fit palette */
+    --team-a:#00d4ff;      /* Ice Cyan */
+    --team-b:#7b2fbe;      /* Violet Sky */
+    --radius-sm:8px;
+    --radius-md:16px;
+    --radius-lg:24px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:var(--bg-0);
+    color:var(--ink);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  body, #tv-frame, #canvas{ touch-action:none; }
+
+  #tv-frame{
+    position:relative;
+    background:#000;
+    overflow:hidden;
+    box-shadow:0 0 0 1px rgba(255,255,255,.06);
+  }
+  #canvas{
+    position:absolute;
+    top:0; left:0;
+    width:1920px;
+    height:1080px;
+    transform-origin:top left;
+    background:var(--bg-0);
+  }
+
+  /* ---------- Video stage ---------- */
+  .stage{
+    position:absolute; inset:0;
+    z-index:1;
+    overflow:hidden;
+    background:var(--bg-0);
+  }
+  .scene{
+    position:absolute; inset:0;
+    opacity:0;
+    transition:opacity .38s cubic-bezier(.22,.9,.32,1);
+  }
+  .stage[data-scene="wide"]   .scene.scene-wide{ opacity:1; }
+  .stage[data-scene="goal"]   .scene.scene-goal{ opacity:1; }
+  .stage[data-scene="yellow"] .scene.scene-yellow{ opacity:1; }
+  .stage[data-scene="red"]    .scene.scene-red{ opacity:1; }
+
+  .media-fallback{
+    position:absolute; inset:0;
+  }
+  /* Aurora wash fallbacks — atmospheric gradient bands (the one place this system's palette
+     permits gradient — see "Do: Northern lights gradient animations" in the design spec) */
+  .scene-wide .media-fallback{ background:
+    radial-gradient(60% 45% at 15% 0%, rgba(0,255,135,.16), transparent 65%),
+    radial-gradient(55% 40% at 85% 0%, rgba(0,212,255,.14), transparent 65%),
+    linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 60%, #05140f 100%); }
+  .scene-goal .media-fallback{ background:
+    radial-gradient(900px 620px at 50% 58%, rgba(0,255,135,.20), transparent 60%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0) 72%); }
+  .scene-yellow .media-fallback{ background:
+    radial-gradient(900px 600px at 55% 55%, rgba(232,196,104,.16), transparent 60%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0) 75%); }
+  .scene-red .media-fallback{ background:
+    radial-gradient(900px 600px at 55% 55%, rgba(255,110,199,.14), transparent 60%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0) 75%); }
+
+  .media{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .kb-slow{ animation:kbzoom 18s ease-in-out infinite alternate; }
+  @keyframes kbzoom{ 0%{ transform:scale(1); } 100%{ transform:scale(1.08); } }
+
+  .tint-yellow{ filter:sepia(.5) hue-rotate(-12deg) saturate(1.6) brightness(.85) contrast(1.05); }
+  .scene-red .vignette-pulse{
+    position:absolute; inset:0;
+    background:radial-gradient(ellipse at 55% 50%, rgba(255,110,199,.28), transparent 65%);
+    animation:red-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes red-pulse{ 0%,100%{ opacity:.55; } 50%{ opacity:1; } }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  .media-note{
+    position:absolute; left:50%; bottom:24px; transform:translateX(-50%);
+    font-size:13px; color:var(--ink-faint); background:rgba(5,11,26,.6);
+    padding:6px 14px; border-radius:999px; display:none; white-space:nowrap;
+  }
+  .media-error .media-note{ display:block; }
+
+  .grain{
+    position:absolute; inset:0; z-index:3; pointer-events:none;
+    background-image:radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size:3px 3px;
+    opacity:.5;
+  }
+  .vignette{
+    position:absolute; inset:0; z-index:3; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.6) 100%);
+  }
+
+  /* Clip chrome */
+  .clip-badge{
+    position:absolute; top:118px; right:110px; z-index:4;
+    display:flex; align-items:center; gap:8px;
+    padding:10px 18px;
+    border-radius:999px;
+    background:rgba(5,11,26,.6);
+    border:1px solid var(--chip-border);
+    backdrop-filter:blur(6px);
+    font-size:14px; font-weight:700; letter-spacing:.04em;
+    opacity:0; transition:opacity .22s ease;
+  }
+  .clip-badge.show{ opacity:1; }
+  .clip-badge .dot{ width:8px; height:8px; border-radius:999px; background:var(--live); animation:pulse 1.4s ease-in-out infinite; }
+
+  .clip-lowerthird{
+    position:absolute; left:110px; bottom:376px; z-index:4;
+    display:flex; align-items:center; gap:16px;
+    max-width:760px;
+    opacity:0; transform:translateY(10px);
+    transition:opacity .22s ease, transform .22s ease;
+  }
+  .clip-lowerthird.show{ opacity:1; transform:translateY(0); }
+  .clip-lowerthird .bar{ width:6px; align-self:stretch; border-radius:4px; flex:none; }
+  .clip-lowerthird.goal .bar{ background:var(--focus-ring); }
+  .clip-lowerthird.yellow .bar{ background:var(--yellow-card); }
+  .clip-lowerthird.red .bar{ background:var(--live); }
+  .clip-lowerthird .lt-text{ display:flex; flex-direction:column; gap:2px; background:rgba(5,11,26,.6); backdrop-filter:blur(6px); padding:12px 20px; border-radius:0 var(--radius-md) var(--radius-md) 0; }
+  .clip-lowerthird .lt-title{ font-size:22px; font-weight:600; }
+  .clip-lowerthird .lt-desc{ font-size:15px; color:var(--ink-dim); font-weight:400; }
+
+  /* Scorebug */
+  .scorebug{
+    position:absolute;
+    left:110px; top:118px;
+    z-index:2;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    background:rgba(5,11,26,.55);
+    border:1px solid var(--chip-border);
+    backdrop-filter:blur(6px);
+    border-radius:var(--radius-md);
+    padding:14px 22px;
+    transition:opacity .38s cubic-bezier(.22,.9,.32,1);
+  }
+  .sb-team{ display:flex; align-items:center; gap:10px; }
+  .crest{
+    width:40px; height:40px; border-radius:999px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; font-weight:800;
+    flex:none;
+  }
+  .crest.a{ background:var(--team-a); color:var(--bg-0); }
+  .crest.b{ background:var(--team-b); color:var(--ink); }
+  .sb-name{ font-size:19px; font-weight:600; }
+  .card-flag{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:14px; height:19px; border-radius:2px;
+    background:var(--live); margin-left:8px; vertical-align:middle;
+    box-shadow:0 0 0 1px rgba(0,0,0,.4) inset;
+  }
+  .sb-score{
+    font-size:29px; font-weight:700; font-variant-numeric:tabular-nums;
+    padding:0 6px; letter-spacing:.02em;
+  }
+  .sb-meta{
+    display:flex; flex-direction:column; gap:4px; padding-left:14px;
+    border-left:1px solid var(--chip-border);
+  }
+  .sb-clock{
+    font-size:19px; font-weight:600; font-variant-numeric:tabular-nums;
+    display:flex; align-items:center; gap:8px;
+  }
+  .live-dot{
+    width:9px; height:9px; border-radius:999px; background:var(--live);
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  .sb-comp{ font-size:14px; color:var(--ink-faint); font-weight:500; }
+
+  /* ---------- Top nav ---------- */
+  .topnav{
+    position:absolute; top:0; left:0; right:0;
+    z-index:1000;
+    height:96px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 110px;
+    background:linear-gradient(to bottom, rgba(5,11,26,.85) 0px, rgba(5,11,26,.4) 80px, transparent 96px);
+    transition:opacity .38s cubic-bezier(.22,.9,.32,1);
+  }
+
+  /* ---------- Wake state — clean video first; the player chrome appears on the first remote press ---------- */
+  body:not(.awake) .topnav,
+  body:not(.awake) .scorebug,
+  body:not(.awake) .osd{
+    opacity:0;
+    pointer-events:none;
+  }
+  .wake-hint{
+    position:absolute; left:50%; bottom:56px; transform:translateX(-50%);
+    z-index:6;
+    display:flex; align-items:center; gap:12px;
+    padding:14px 24px;
+    border-radius:999px;
+    background:rgba(5,11,26,.55);
+    border:1px solid var(--chip-border);
+    backdrop-filter:blur(6px);
+    font-size:15px; font-weight:600; color:var(--ink-dim);
+    opacity:1;
+    transition:opacity .3s ease;
+    pointer-events:none;
+  }
+  .wake-hint .dot{ width:8px; height:8px; border-radius:999px; background:var(--focus-ring); animation:pulse 1.4s ease-in-out infinite; }
+  body.awake .wake-hint{ opacity:0; }
+  .nav-left{ display:flex; align-items:center; gap:22px; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 18px;
+    border-radius:var(--radius-sm);
+    color:var(--ink-dim);
+    font-size:16px; font-weight:600;
+    transition:transform .2s cubic-bezier(.22,1.4,.5,1), box-shadow .2s ease;
+    cursor:pointer;
+  }
+  .nav-item .chev{ width:18px; height:18px; }
+  .nav-title{
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .nav-title b{ font-size:16px; font-weight:600; color:var(--ink); }
+  .nav-title span{ font-size:13px; color:var(--ink-faint); font-weight:500; }
+
+  .mode-pill{
+    display:flex; align-items:center; gap:8px;
+    padding:10px 20px;
+    border-radius:999px;
+    font-size:14px; font-weight:700; letter-spacing:.04em;
+    background:var(--chip-bg);
+    border:1px solid var(--chip-border);
+    transition:transform .2s cubic-bezier(.22,1.4,.5,1), box-shadow .2s ease;
+    cursor:pointer;
+  }
+  .mode-pill.live{ background:rgba(255,110,199,.18); border-color:rgba(255,110,199,.5); color:#ffd6ef; }
+  .mode-pill .dot{ width:8px; height:8px; border-radius:999px; background:var(--live); }
+  .mode-pill.live .dot{ animation:pulse 1.4s ease-in-out infinite; }
+
+  .focused{
+    transform:scale(1.06);
+    box-shadow:0 0 0 4px var(--focus-ring);
+    z-index:5;
+  }
+
+  /* ---------- OSD ---------- */
+  .osd{
+    position:absolute; left:0; right:0; bottom:0;
+    z-index:5;
+    height:334px;
+    padding:0 110px 46px;
+    display:flex; flex-direction:column; justify-content:flex-end; gap:22px;
+    background:linear-gradient(to bottom, transparent 0px, rgba(5,11,26,.55) 140px, var(--bg-0) 334px);
+    transition:opacity .38s cubic-bezier(.22,.9,.32,1);
+  }
+
+  .flag-tooltip{
+    position:absolute;
+    bottom:44px;
+    transform:translateX(-50%);
+    background:var(--bg-2);
+    border:1px solid var(--chip-border);
+    border-radius:var(--radius-md);
+    padding:12px 18px;
+    white-space:nowrap;
+    display:flex; flex-direction:column; gap:2px;
+    opacity:0; pointer-events:none;
+    transition:opacity .22s ease, transform .22s ease, left .22s ease;
+  }
+  .flag-tooltip.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
+  .flag-tooltip .tt-title{ font-size:19px; font-weight:600; }
+  .flag-tooltip .tt-desc{ font-size:15px; color:var(--ink-dim); font-weight:400; }
+  .flag-tooltip:after{
+    content:"";
+    position:absolute; left:50%; bottom:-7px; transform:translateX(-50%);
+    width:14px; height:14px; background:var(--bg-2);
+    border-right:1px solid var(--chip-border); border-bottom:1px solid var(--chip-border);
+    rotate:45deg;
+  }
+
+  .timeline-row{ position:relative; padding-top:26px; }
+  .track{
+    position:relative;
+    height:10px;
+    border-radius:5px;
+    background:var(--progress-track);
+  }
+  .fill{
+    position:absolute; left:0; top:0; bottom:0;
+    border-radius:5px;
+    background:var(--progress-fill);
+    width:0%;
+    transition:width .22s cubic-bezier(.22,.9,.32,1), opacity .22s ease;
+  }
+  .track.previewing .fill{ opacity:.7; }
+  .elapsed-mark{
+    position:absolute; top:50%; width:3px; height:20px;
+    background:rgba(255,255,255,.5); border-radius:2px;
+    transform:translate(-50%,-50%);
+    display:none;
+  }
+  .unreached{
+    position:absolute; top:0; bottom:0; right:0;
+    border-radius:0 5px 5px 0;
+    background:repeating-linear-gradient(115deg, rgba(255,255,255,.05) 0 6px, transparent 6px 12px);
+    display:none;
+  }
+  .live-edge-mark{
+    position:absolute; top:50%; width:3px; height:24px;
+    background:var(--live); border-radius:2px;
+    transform:translate(-50%,-50%);
+    display:none;
+    box-shadow:0 0 10px rgba(255,110,199,.7);
+  }
+  .playhead{
+    position:absolute; top:50%; width:20px; height:20px;
+    border-radius:999px; background:var(--ink);
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 0 4px rgba(0,0,0,.25);
+    transition:box-shadow .22s ease, transform .22s ease, left .22s cubic-bezier(.22,.9,.32,1), opacity .22s ease;
+  }
+  .track.previewing .playhead{ opacity:.92; }
+  .flags-layer{ position:absolute; inset:0; }
+  .flag-marker{
+    position:absolute; top:50%;
+    width:30px; height:30px;
+    transform:translate(-50%,-50%) scale(1);
+    border-radius:999px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px;
+    border:2px solid var(--bg-0);
+    transition:transform .22s ease, box-shadow .22s ease;
+    z-index:2;
+  }
+  .flag-marker.goal{ background:var(--focus-ring); }
+  .flag-marker.yellow{ background:var(--yellow-card); }
+  .flag-marker.red{ background:var(--live); }
+  .flag-marker.active{
+    transform:translate(-50%,-50%) scale(1.35);
+    box-shadow:0 0 0 4px var(--focus-ring), 0 0 16px var(--focus-glow);
+    z-index:6;
+  }
+
+  .ev-ic{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:999px;
+    padding:5px; vertical-align:-6px; margin-right:6px; flex:none;
+  }
+  .ev-ic svg{ width:100%; height:100%; }
+  .ev-ic.goal{ background:var(--focus-ring); color:var(--bg-0); }
+  .ev-ic.yellow{ background:var(--yellow-card); color:var(--bg-0); }
+  .ev-ic.red{ background:var(--live); color:var(--bg-0); }
+
+  .time-row{
+    display:flex; justify-content:space-between;
+    font-size:17px; font-weight:600; font-variant-numeric:tabular-nums;
+    color:var(--ink-dim);
+  }
+  .time-row .right{ display:flex; align-items:center; gap:8px; }
+  .time-row .right.live{ color:#ffd6ef; }
+  .time-row .right .dot{ width:7px; height:7px; border-radius:999px; background:var(--live); animation:pulse 1.4s ease-in-out infinite; }
+
+  .buttons-row{ display:flex; align-items:center; gap:20px; }
+  .ctrl-btn{
+    display:flex; align-items:center; justify-content:center;
+    gap:10px;
+    height:64px;
+    padding:0 22px;
+    border-radius:var(--radius-sm);
+    background:var(--chip-bg);
+    border:1px solid var(--chip-border);
+    font-size:16px; font-weight:600;
+    transition:transform .2s cubic-bezier(.22,1.4,.5,1), box-shadow .2s ease, background .2s ease;
+    cursor:pointer;
+  }
+  .ctrl-btn.round{ width:64px; padding:0; }
+  .ic{ display:inline-flex; width:20px; height:20px; flex:none; }
+  .ic svg{ width:100%; height:100%; display:block; }
+  .ctrl-btn .ic{ width:24px; height:24px; }
+  .ctrl-btn.primary{ background:rgba(0,255,135,.16); border-color:rgba(0,255,135,.45); color:var(--focus-ring); }
+  .ctrl-btn.live-btn{ background:rgba(255,110,199,.18); border-color:rgba(255,110,199,.5); color:#ffd6ef; }
+  .ctrl-btn.live-btn .ic{ width:10px; height:10px; animation:pulse 1.4s ease-in-out infinite; }
+
+  .remote-hint{
+    position:absolute;
+    right:110px; bottom:16px;
+    display:flex; align-items:center; gap:12px;
+    font-size:13px; color:var(--ink-faint); font-weight:500;
+  }
+  .dpad{
+    width:34px; height:34px;
+    position:relative;
+    flex:none;
+  }
+  .dpad div{
+    position:absolute; background:var(--chip-bg); border:1px solid var(--chip-border);
+  }
+  .dpad .h{ left:0; right:0; top:12px; height:10px; border-radius:3px; }
+  .dpad .v{ top:0; bottom:0; left:12px; width:10px; border-radius:3px; }
+  .dpad .c{ left:10px; top:10px; width:14px; height:14px; border-radius:999px; background:var(--ink); border:none; }
+
+  /* ---------- Drawer ---------- */
+  .scrim{
+    position:absolute; inset:0; z-index:9;
+    background:rgba(5,11,26,.55);
+    opacity:0; pointer-events:none;
+    transition:opacity .38s cubic-bezier(.22,.9,.32,1);
+  }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+
+  .drawer{
+    position:absolute; top:0; right:0; bottom:0;
+    z-index:10;
+    width:520px;
+    background:var(--bg-1);
+    border-left:1px solid var(--chip-border);
+    border-radius:var(--radius-lg) 0 0 var(--radius-lg);
+    padding:64px 44px;
+    transform:translateX(100%);
+    transition:transform .38s cubic-bezier(.22,.9,.32,1);
+    display:flex; flex-direction:column; gap:26px;
+    box-shadow:-30px 0 60px rgba(0,0,0,.4);
+  }
+  .drawer.open{ transform:translateX(0); }
+  .drawer h2{ margin:0; font-size:29px; font-weight:600; }
+  .drawer .sub{ margin-top:-18px; font-size:15px; color:var(--ink-faint); font-weight:500; }
+  .drawer-list{ display:flex; flex-direction:column; gap:14px; }
+  .drawer-item{
+    display:flex; align-items:center; gap:16px;
+    padding:16px 18px;
+    border-radius:var(--radius-md);
+    background:var(--chip-bg);
+    border:1px solid transparent;
+    transition:transform .2s cubic-bezier(.22,1.4,.5,1), box-shadow .2s ease;
+    cursor:pointer;
+  }
+  .drawer-item .badge{
+    width:38px; height:38px; border-radius:999px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    padding:9px;
+  }
+  .drawer-item .badge svg{ width:100%; height:100%; }
+  .drawer-item .badge.goal{ background:var(--focus-ring); color:var(--bg-0); }
+  .drawer-item .badge.yellow{ background:var(--yellow-card); color:var(--bg-0); }
+  .drawer-item .badge.red{ background:var(--live); color:var(--bg-0); }
+  .drawer-item .di-text{ display:flex; flex-direction:column; gap:2px; }
+  .drawer-item .di-title{ font-size:19px; font-weight:600; }
+  .drawer-item .di-desc{ font-size:15px; color:var(--ink-dim); font-weight:400; }
+  .drawer-item .di-time{ margin-left:auto; font-size:16px; font-weight:600; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+  .drawer-item.focused{ background:var(--chip-border); }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:absolute; top:150px; left:50%;
+    transform:translateX(-50%) translateY(-10px);
+    z-index:20;
+    background:var(--bg-2);
+    border:1px solid var(--chip-border);
+    border-radius:999px;
+    padding:16px 28px;
+    font-size:19px; font-weight:600;
+    display:flex; align-items:center; gap:12px;
+    opacity:0; pointer-events:none;
+    transition:opacity .3s ease, transform .3s ease;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001s !important; transition-duration:.001s !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="tv-frame">
+  <div id="canvas">
+
+    <div class="stage" id="stage" data-scene="wide">
+
+      <div class="scene scene-wide">
+        <div class="media-fallback"></div>
+        <video class="media kb-slow" id="wideVideo" autoplay muted loop playsinline
+          poster="https://images.pexels.com/videos/11918917/pexels-photo-11918917.jpeg?auto=compress&cs=tinysrgb&h=627&fit=crop&w=1200"
+          onerror="this.closest('.scene').classList.add('media-error')">
+          <source src="https://videos.pexels.com/video-files/11918917/11918917-hd_1920_1080_60fps.mp4" type="video/mp4">
+        </video>
+        <div class="media-note">Sample clip (stock footage) failed to load — check your internet connection</div>
+      </div>
+
+      <div class="scene scene-goal">
+        <div class="media-fallback"></div>
+        <video class="media" id="goalVideo" muted loop playsinline
+          poster="https://images.pexels.com/videos/31510089/european-football-football-football-action-football-club-31510089.jpeg"
+          onerror="this.closest('.scene').classList.add('media-error')">
+          <source src="https://videos.pexels.com/video-files/31510089/13433230_1080_1920_60fps.mp4" type="video/mp4">
+        </video>
+        <div class="media-note">Sample clip (stock footage) failed to load — check your internet connection</div>
+      </div>
+
+      <div class="scene scene-yellow">
+        <div class="media-fallback"></div>
+        <video class="media tint-yellow" id="yellowVideo" muted loop playsinline
+          poster="https://images.pexels.com/videos/11918917/pexels-photo-11918917.jpeg?auto=compress&cs=tinysrgb&h=627&fit=crop&w=1200"
+          onerror="this.closest('.scene').classList.add('media-error')">
+          <source src="https://videos.pexels.com/video-files/11918917/11918917-hd_1920_1080_60fps.mp4" type="video/mp4">
+        </video>
+        <div class="media-note">Sample clip (stock footage) failed to load — check your internet connection</div>
+      </div>
+
+      <div class="scene scene-red">
+        <div class="media-fallback"></div>
+        <div class="vignette-pulse"></div>
+        <img class="media kb-slow" id="redImg"
+          src="https://images.pexels.com/photos/12585892/pexels-photo-12585892.jpeg?cs=srgb&dl=pexels-boom-12585892.jpg&fm=jpg"
+          alt="Referee showing a red card (stock photo from Pexels)"
+          onerror="this.closest('.scene').classList.add('media-error')">
+        <div class="media-note">Sample image (stock photo) failed to load — check your internet connection</div>
+      </div>
+
+      <div class="grain"></div>
+      <div class="vignette"></div>
+
+      <div class="clip-badge" id="clipBadge"><span class="dot"></span><span id="clipBadgeText">Highlight replay</span></div>
+      <div class="clip-lowerthird" id="clipLowerThird">
+        <div class="bar"></div>
+        <div class="lt-text">
+          <span class="lt-title" id="ltTitle"></span>
+          <span class="lt-desc" id="ltDesc"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scorebug">
+      <div class="sb-team">
+        <div class="crest a">BU</div>
+        <span class="sb-name" id="nameA">Buriram United</span>
+        <span class="card-flag" id="cardA" style="display:none"></span>
+      </div>
+      <div class="sb-score"><span id="scoreA">0</span>–<span id="scoreB">0</span></div>
+      <div class="sb-team">
+        <span class="card-flag" id="cardB" style="display:none"></span>
+        <span class="sb-name" id="nameB">Port FC</span>
+        <div class="crest b">PT</div>
+      </div>
+      <div class="sb-meta">
+        <div class="sb-clock"><span class="live-dot" id="clockDot"></span><span id="matchClock">63:30</span></div>
+        <div class="sb-comp">Thai League 1 • Matchweek 8</div>
+      </div>
+    </div>
+
+    <nav class="topnav">
+      <div class="nav-left">
+        <div class="nav-item" id="navBack" data-nav="0"><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span> Back</div>
+        <div class="nav-title"><b>Buriram United vs Port FC</b><span>Chang Arena • AIS Play</span></div>
+      </div>
+      <div class="mode-pill live" id="navMode" data-nav="1">
+        <span class="dot"></span><span id="modeLabel">LIVE</span>
+      </div>
+    </nav>
+
+    <div class="osd" id="osd">
+      <div class="timeline-row" id="timelineRow">
+        <div class="track" id="track">
+          <div class="fill" id="fill"></div>
+          <div class="unreached" id="unreached"></div>
+          <div class="live-edge-mark" id="liveEdgeMark"></div>
+          <div class="elapsed-mark" id="elapsedMark"></div>
+          <div class="flags-layer" id="flagsLayer"></div>
+          <div class="playhead" id="playhead"></div>
+          <div class="flag-tooltip" id="flagTooltip">
+            <span class="tt-title" id="ttTitle"></span>
+            <span class="tt-desc" id="ttDesc"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-row">
+        <span id="tElapsed">00:00</span>
+        <span class="right" id="tDurationWrap"><span id="tDuration">97:00</span></span>
+      </div>
+
+      <div class="buttons-row" id="buttonsRow"></div>
+
+      <div class="remote-hint">
+        <div class="dpad"><div class="h"></div><div class="v"></div><div class="c"></div></div>
+        <span id="hintText">↑ Controls   ↓ Timeline   OK Select</span>
+      </div>
+    </div>
+
+    <div class="wake-hint" id="wakeHint"><span class="dot"></span>Press any button to show controls</div>
+
+    <div class="scrim" id="scrim"></div>
+    <aside class="drawer" id="drawer">
+      <h2>Key Moments</h2>
+      <div class="sub">Select a moment to jump straight to it</div>
+      <div class="drawer-list" id="drawerList"></div>
+    </aside>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- icon system (inline SVG — no emoji, per design spec) ---------------- */
+  var ICONS = {
+    flag: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 2a1 1 0 00-1 1v19h2v-7h11.5a1 1 0 00.8-1.6L15.4 9l2.9-4.4A1 1 0 0017.5 3H6V3a1 1 0 00-1-1z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5a1 1 0 011.53-.85l11 6.5a1 1 0 010 1.7l-11 6.5A1 1 0 017 17.5v-13z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>',
+    back10: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 5L4 12l8.5 7V5z"/><path d="M21 5l-8.5 7 8.5 7V5z"/></svg>',
+    fwd10: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 5L20 12l-8.5 7V5z"/><path d="M3 5l8.5 7L3 19V5z"/></svg>',
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/></svg>',
+    live: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>'
+  };
+  function icon(name){ return '<span class="ic">'+ICONS[name]+'</span>'; }
+  function flagIcon(type){ return '<span class="ev-ic '+type+'">'+ICONS.flag+'</span>'; }
+
+  /* ---------------- layout scaling ---------------- */
+  var DESIGN_W = 1920, DESIGN_H = 1080;
+  var frame = document.getElementById('tv-frame');
+  var canvas = document.getElementById('canvas');
+  function layout(){
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var scale = Math.min(vw/DESIGN_W, vh/DESIGN_H);
+    frame.style.width = (DESIGN_W*scale)+'px';
+    frame.style.height = (DESIGN_H*scale)+'px';
+    canvas.style.transform = 'scale('+scale+')';
+  }
+  window.addEventListener('resize', layout);
+  layout();
+  document.addEventListener('wheel', function(e){ e.preventDefault(); }, {passive:false});
+  document.addEventListener('touchmove', function(e){ e.preventDefault(); }, {passive:false});
+
+  /* ---------------- data ---------------- */
+  var DURATION = 5820; // 97:00 full match incl. stoppage
+  var LIVE_START = 3810; // 63:30 — demo starting point for live mode
+  var CLIP_WINDOW = 18;  // match-seconds a highlight clip stays on screen after being opened
+  var ACCEL = 15; // match-seconds per real second
+
+  var FLAGS = [
+    { t:720,  type:'goal',   team:'A', label:'12′',    title:'Goal',               desc:'Buriram United — Supachai Chaided' },
+    { t:2040, type:'yellow', team:'B', label:'34′',    title:'Yellow card',        desc:'Port FC — Elias Dolah' },
+    { t:2820, type:'goal',   team:'B', label:'45+2′',  title:'Goal (penalty)',     desc:'Port FC — Teerasil Dangda' },
+    { t:3480, type:'red',    team:'A', label:'58′',    title:'Red card',           desc:'Buriram United — Second yellow card' },
+    { t:4260, type:'goal',   team:'A', label:'71′',    title:'Goal',               desc:'Buriram United — Diogo Sousa' },
+    { t:5040, type:'yellow', team:'A', label:'84′',    title:'Yellow card',        desc:'Buriram United — Time-wasting' }
+  ];
+
+  /* ---------------- state ---------------- */
+  var state = {
+    mode:'live',           // 'live' | 'vod'
+    liveEdge:LIVE_START,
+    elapsed:LIVE_START,
+    playing:false,
+    awake:false,           // player chrome hidden until the first remote press
+    focusZone:'asleep',    // 'asleep' | 'nav' | 'timeline' | 'buttons' | 'drawer'
+    navIndex:0,
+    buttonIndex:2,
+    activeFlagIndex:-1,    // -1 = resting on the live playhead itself (no key moment selected yet)
+    drawerOpen:false,
+    drawerIndex:0,
+    activeClip:null       // the flag object currently shown as a replay clip in the video stage, or null
+  };
+
+  function wake(){
+    if(state.awake) return;
+    state.awake = true;
+    state.focusZone = 'timeline';
+    state.activeFlagIndex = -1;
+  }
+
+  // when resting on the playhead (no flag focused yet), Left/Right jumps to the nearest
+  // key moment in that direction relative to the actual current position
+  function stepFromPlayhead(dir){
+    var flags = visibleFlags();
+    if(!flags.length) return -1;
+    if(dir==='right'){
+      for(var i=0;i<flags.length;i++){ if(flags[i].t > state.elapsed) return i; }
+      return flags.length-1;
+    } else {
+      for(var j=flags.length-1;j>=0;j--){ if(flags[j].t < state.elapsed) return j; }
+      return 0;
+    }
+  }
+
+  function currentCeiling(){ return state.mode==='live' ? state.liveEdge : DURATION; }
+  function visibleFlags(){
+    return FLAGS.filter(function(f){ return state.mode==='vod' || f.t <= state.liveEdge; });
+  }
+  function fmt(t){
+    t = Math.max(0, Math.round(t));
+    var m = Math.floor(t/60), s = t%60;
+    return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+  }
+
+  /* ---------------- DOM refs ---------------- */
+  var el = {
+    track: document.getElementById('track'),
+    fill: document.getElementById('fill'),
+    unreached: document.getElementById('unreached'),
+    liveEdgeMark: document.getElementById('liveEdgeMark'),
+    elapsedMark: document.getElementById('elapsedMark'),
+    playhead: document.getElementById('playhead'),
+    flagsLayer: document.getElementById('flagsLayer'),
+    tElapsed: document.getElementById('tElapsed'),
+    tDuration: document.getElementById('tDuration'),
+    tDurationWrap: document.getElementById('tDurationWrap'),
+    buttonsRow: document.getElementById('buttonsRow'),
+    flagTooltip: document.getElementById('flagTooltip'),
+    ttTitle: document.getElementById('ttTitle'),
+    ttDesc: document.getElementById('ttDesc'),
+    timelineRow: document.getElementById('timelineRow'),
+    navBack: document.getElementById('navBack'),
+    navMode: document.getElementById('navMode'),
+    modeLabel: document.getElementById('modeLabel'),
+    drawer: document.getElementById('drawer'),
+    drawerList: document.getElementById('drawerList'),
+    scrim: document.getElementById('scrim'),
+    toast: document.getElementById('toast'),
+    hintText: document.getElementById('hintText'),
+    scoreA: document.getElementById('scoreA'),
+    scoreB: document.getElementById('scoreB'),
+    matchClock: document.getElementById('matchClock'),
+    clockDot: document.getElementById('clockDot'),
+    cardA: document.getElementById('cardA'),
+    cardB: document.getElementById('cardB'),
+    stage: document.getElementById('stage'),
+    clipBadge: document.getElementById('clipBadge'),
+    clipBadgeText: document.getElementById('clipBadgeText'),
+    clipLowerThird: document.getElementById('clipLowerThird'),
+    ltTitle: document.getElementById('ltTitle'),
+    ltDesc: document.getElementById('ltDesc'),
+    wideVideo: document.getElementById('wideVideo'),
+    goalVideo: document.getElementById('goalVideo'),
+    yellowVideo: document.getElementById('yellowVideo')
+  };
+
+  /* ---------------- buttons ---------------- */
+  function buttonDefs(){
+    var defs = [
+      { id:'keyMoments', icon:'list',    label:'Key Moments', round:false },
+      { id:'back10',     icon:'back10',  label:'', round:true },
+      { id:'playPause',  icon: state.playing ? 'pause' : 'play', label:'', round:true, primary:true },
+      { id:'fwd10',      icon:'fwd10',   label:'', round:true }
+    ];
+    if(state.mode==='live' && state.elapsed < state.liveEdge - 1){
+      defs.push({ id:'backToLive', icon:'live', label:'Back to Live', round:false, live:true });
+    }
+    return defs;
+  }
+
+  function renderButtons(){
+    var defs = buttonDefs();
+    if(state.buttonIndex > defs.length-1) state.buttonIndex = defs.length-1;
+    el.buttonsRow.innerHTML = '';
+    defs.forEach(function(d, i){
+      var b = document.createElement('div');
+      b.className = 'ctrl-btn' + (d.round?' round':'') + (d.primary?' primary':'') + (d.live?' live-btn':'');
+      b.innerHTML = (d.icon ? icon(d.icon) : '') + (d.label ? '<span>'+d.label+'</span>' : '');
+      b.dataset.id = d.id;
+      b.addEventListener('click', function(){
+        state.focusZone='buttons'; state.buttonIndex=i; render();
+        activateButton(d.id);
+      });
+      el.buttonsRow.appendChild(b);
+    });
+    updateFocusVisuals();
+  }
+
+  /* ---------------- render ---------------- */
+  function render(){
+    document.body.classList.toggle('awake', state.awake);
+    var ceiling = currentCeiling();
+
+    // flags — computed early so browsing the timeline can preview directly on the seek bar itself
+    var flags = visibleFlags();
+    if(state.activeFlagIndex > flags.length-1) state.activeFlagIndex = Math.max(0, flags.length-1);
+    var browsingFlag = (state.focusZone==='timeline') ? flags[state.activeFlagIndex] : null;
+    var displayT = browsingFlag ? browsingFlag.t : state.elapsed;
+    var isPreviewing = !!browsingFlag && browsingFlag.t !== state.elapsed;
+
+    var pct = Math.min(100, (displayT/DURATION)*100);
+    el.fill.style.width = pct+'%';
+    el.playhead.style.left = pct+'%';
+    el.track.classList.toggle('previewing', isPreviewing);
+    el.elapsedMark.style.display = isPreviewing ? 'block' : 'none';
+    if(isPreviewing) el.elapsedMark.style.left = (state.elapsed/DURATION*100)+'%';
+
+    if(state.mode==='live'){
+      el.unreached.style.display='block';
+      el.unreached.style.left = (state.liveEdge/DURATION*100)+'%';
+      el.liveEdgeMark.style.display='block';
+      el.liveEdgeMark.style.left = (state.liveEdge/DURATION*100)+'%';
+    } else {
+      el.unreached.style.display='none';
+      el.liveEdgeMark.style.display='none';
+    }
+
+    el.tElapsed.textContent = fmt(displayT);
+    if(state.mode==='live'){
+      el.tDurationWrap.classList.add('live');
+      el.tDurationWrap.innerHTML = '<span class="dot"></span><span>LIVE</span>';
+    } else {
+      el.tDurationWrap.classList.remove('live');
+      el.tDurationWrap.innerHTML = '<span>'+fmt(DURATION)+'</span>';
+    }
+
+    // flags (visibleFlags/activeFlagIndex clamp already computed above, before the pct calc)
+    el.flagsLayer.innerHTML = '';
+    flags.forEach(function(f, i){
+      var m = document.createElement('div');
+      m.className = 'flag-marker '+f.type+(state.focusZone==='timeline' && i===state.activeFlagIndex ? ' active':'');
+      m.style.left = (f.t/DURATION*100)+'%';
+      m.title = f.title+' '+f.label;
+      m.addEventListener('click', function(){
+        state.focusZone='timeline'; state.activeFlagIndex=i; render();
+        seekTo(f);
+      });
+      el.flagsLayer.appendChild(m);
+    });
+
+    // tooltip — only while browsing a flag that isn't already the one playing as a clip
+    // (once a clip is confirmed, the video-stage lower-third carries that same information)
+    var focusedFlag = browsingFlag;
+    var tooltipRedundant = state.activeClip && focusedFlag && state.activeClip === focusedFlag;
+    if(focusedFlag && !tooltipRedundant){
+      el.ttTitle.innerHTML = flagIcon(focusedFlag.type)+focusedFlag.title+'  '+focusedFlag.label;
+      el.ttDesc.textContent = focusedFlag.desc;
+      el.flagTooltip.style.left = (focusedFlag.t/DURATION*100)+'%';
+      el.flagTooltip.classList.add('show');
+    } else {
+      el.flagTooltip.classList.remove('show');
+    }
+
+    // scorebug
+    var goalsA = FLAGS.filter(function(f){ return f.type==='goal' && f.team==='A' && f.t<=ceiling; }).length;
+    var goalsB = FLAGS.filter(function(f){ return f.type==='goal' && f.team==='B' && f.t<=ceiling; }).length;
+    el.scoreA.textContent = goalsA;
+    el.scoreB.textContent = goalsB;
+    var redA = FLAGS.some(function(f){ return f.type==='red' && f.team==='A' && f.t<=ceiling; });
+    var redB = FLAGS.some(function(f){ return f.type==='red' && f.team==='B' && f.t<=ceiling; });
+    el.cardA.style.display = redA ? 'inline-flex' : 'none';
+    el.cardB.style.display = redB ? 'inline-flex' : 'none';
+    el.matchClock.textContent = fmt(ceiling) + (state.mode==='live' ? '' : ' • FT');
+    el.clockDot.style.display = state.mode==='live' ? 'inline-block' : 'none';
+
+    // mode pill
+    el.navMode.classList.toggle('live', state.mode==='live');
+    el.modeLabel.textContent = state.mode==='live' ? 'LIVE' : 'REPLAY';
+
+    renderButtons();
+    renderDrawer();
+    updateHint();
+    updateFocusVisuals();
+    updateScene();
+  }
+
+  function updateScene(){
+    var clip = state.activeClip;
+    var sceneName = clip ? clip.type : 'wide';
+    el.stage.dataset.scene = sceneName;
+    if(clip){
+      el.clipBadge.classList.add('show');
+      el.clipBadgeText.textContent = 'Highlight replay • '+clip.label;
+      el.clipLowerThird.className = 'clip-lowerthird show '+clip.type;
+      el.ltTitle.innerHTML = flagIcon(clip.type)+clip.title+'  '+clip.label;
+      el.ltDesc.textContent = clip.desc;
+    } else {
+      el.clipBadge.classList.remove('show');
+      el.clipLowerThird.classList.remove('show');
+    }
+    // play only the active scene's video, pause the rest (saves resources, avoids audio-less clutter)
+    [['wide', el.wideVideo], ['goal', el.goalVideo], ['yellow', el.yellowVideo]].forEach(function(pair){
+      var name = pair[0], video = pair[1];
+      if(!video) return;
+      if(name===sceneName){ video.play && video.play().catch(function(){}); }
+      else { video.pause && video.pause(); }
+    });
+  }
+
+  function renderDrawer(){
+    el.drawer.classList.toggle('open', state.drawerOpen);
+    el.scrim.classList.toggle('open', state.drawerOpen);
+    var flags = visibleFlags();
+    el.drawerList.innerHTML = '';
+    flags.forEach(function(f, i){
+      var row = document.createElement('div');
+      row.className = 'drawer-item'+(state.drawerOpen && i===state.drawerIndex ? ' focused':'');
+      row.innerHTML =
+        '<div class="badge '+f.type+'">'+ICONS.flag+'</div>' +
+        '<div class="di-text"><span class="di-title">'+f.title+'</span><span class="di-desc">'+f.desc+'</span></div>' +
+        '<span class="di-time">'+f.label+'</span>';
+      row.addEventListener('click', function(){
+        state.drawerIndex = i;
+        confirmDrawerSelection();
+      });
+      el.drawerList.appendChild(row);
+    });
+  }
+
+  function updateFocusVisuals(){
+    el.navBack.classList.toggle('focused', state.focusZone==='nav' && state.navIndex===0);
+    el.navMode.classList.toggle('focused', state.focusZone==='nav' && state.navIndex===1);
+    el.timelineRow.classList.toggle('focused-row', state.focusZone==='timeline');
+    el.playhead.style.boxShadow = state.focusZone==='timeline'
+      ? '0 0 0 4px var(--focus-ring), 0 0 14px var(--focus-glow)'
+      : '0 0 0 4px rgba(0,0,0,.25)';
+    var btns = el.buttonsRow.children;
+    for(var i=0;i<btns.length;i++){
+      btns[i].classList.toggle('focused', state.focusZone==='buttons' && i===state.buttonIndex);
+    }
+  }
+
+  function updateHint(){
+    var t;
+    if(state.drawerOpen){
+      t = '↑ ↓ Choose event   OK Go to moment   ← Close';
+    } else if(state.focusZone==='timeline'){
+      t = state.activeFlagIndex===-1
+        ? '← → Key moments   OK Play/Pause   ↑ Top menu   ↓ Controls'
+        : '← → Skip moments   OK Play from here   ↑ Top menu   ↓ Controls';
+    } else if(state.focusZone==='nav'){
+      t = '← → Choose menu   OK Select   ↓ Timeline';
+    } else {
+      t = '← → Choose button   OK Select   ↑ Timeline';
+    }
+    el.hintText.textContent = t;
+  }
+
+  function showToast(html){
+    el.toast.innerHTML = html;
+    el.toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ el.toast.classList.remove('show'); }, 1800);
+  }
+
+  /* ---------------- actions ---------------- */
+  function seekTo(flag){
+    state.elapsed = Math.min(flag.t, currentCeiling());
+    state.activeClip = flag;
+    showToast(icon('play')+'Playing from '+flag.label+' — '+flag.title);
+    render();
+  }
+
+  function confirmDrawerSelection(){
+    var flags = visibleFlags();
+    var f = flags[state.drawerIndex];
+    if(f){
+      state.elapsed = Math.min(f.t, currentCeiling());
+      state.focusZone = 'timeline';
+      state.activeFlagIndex = state.drawerIndex;
+      state.activeClip = f;
+      showToast(icon('play')+'Playing from '+f.label+' — '+f.title);
+    }
+    state.drawerOpen = false;
+    render();
+  }
+
+  function activateButton(id){
+    var ceiling = currentCeiling();
+    if(id==='keyMoments'){
+      state.drawerOpen = true;
+      var flags = visibleFlags();
+      var nearest = 0, best = Infinity;
+      flags.forEach(function(f,i){ var d=Math.abs(f.t-state.elapsed); if(d<best){best=d; nearest=i;} });
+      state.drawerIndex = nearest;
+    } else if(id==='back10'){
+      state.elapsed = Math.max(0, state.elapsed-10);
+      state.activeClip = null;
+    } else if(id==='fwd10'){
+      state.elapsed = Math.min(ceiling, state.elapsed+10);
+      state.activeClip = null;
+    } else if(id==='playPause'){
+      state.playing = !state.playing;
+    } else if(id==='backToLive'){
+      state.elapsed = state.liveEdge;
+      state.activeClip = null;
+      showToast('<span style="color:var(--live)">'+icon('live')+'</span>Back to the live broadcast');
+    }
+    render();
+  }
+
+  function toggleMode(){
+    if(state.mode==='live'){
+      state.mode='vod';
+      state.playing=false;
+    } else {
+      state.mode='live';
+      state.liveEdge = LIVE_START;
+      state.elapsed = LIVE_START;
+      state.playing=false;
+    }
+    state.activeFlagIndex = -1;
+    state.activeClip = null;
+    render();
+  }
+
+  /* ---------------- remote / keyboard nav ---------------- */
+  function moveFocus(dir){
+    var order = ['nav','timeline','buttons'];
+    var idx = order.indexOf(state.focusZone);
+    if(dir==='down' && idx < order.length-1){ state.focusZone = order[idx+1]; }
+    if(dir==='up' && idx > 0){ state.focusZone = order[idx-1]; }
+    if(state.focusZone==='timeline'){
+      // always rest on the live playhead itself when timeline gains focus —
+      // browsing to a specific key moment is an explicit Left/Right action, not automatic
+      state.activeFlagIndex = -1;
+    }
+  }
+
+  // Back to the Content Picker (added): return via history when we came from it, otherwise open it
+  function goBackToPicker(){
+    try {
+      if(document.referrer && /content-picker\.html/.test(document.referrer) && history.length > 1){ history.back(); return; }
+    } catch(e){}
+    window.location.href = 'content-picker.html';
+  }
+
+  window.addEventListener('keydown', function(e){
+    // remote Back key: leave the player (the drawer keeps its own Back handling below)
+    if((e.key==='Escape' || e.key==='Backspace') && !state.drawerOpen){ e.preventDefault(); goBackToPicker(); return; }
+    // first remote press just wakes the player chrome and parks focus on the seek bar,
+    // right at the point the video is currently playing — it does nothing else
+    if(!state.awake){
+      wake();
+      e.preventDefault();
+      render();
+      return;
+    }
+
+    var handled = true;
+    if(state.drawerOpen){
+      var flags = visibleFlags();
+      if(e.key==='ArrowDown'){ state.drawerIndex = Math.min(flags.length-1, state.drawerIndex+1); }
+      else if(e.key==='ArrowUp'){ state.drawerIndex = Math.max(0, state.drawerIndex-1); }
+      else if(e.key==='Enter'){ confirmDrawerSelection(); }
+      else if(e.key==='ArrowLeft' || e.key==='Escape' || e.key==='Backspace'){ state.drawerOpen=false; }
+      else { handled=false; }
+    } else {
+      if(e.key==='ArrowDown'){ moveFocus('down'); }
+      else if(e.key==='ArrowUp'){ moveFocus('up'); }
+      else if(e.key==='ArrowLeft'){
+        if(state.focusZone==='nav') state.navIndex = Math.max(0, state.navIndex-1);
+        else if(state.focusZone==='buttons') state.buttonIndex = Math.max(0, state.buttonIndex-1);
+        else if(state.focusZone==='timeline'){
+          state.activeFlagIndex = state.activeFlagIndex===-1 ? stepFromPlayhead('left') : Math.max(0, state.activeFlagIndex-1);
+        }
+        else handled=false;
+      }
+      else if(e.key==='ArrowRight'){
+        if(state.focusZone==='nav') state.navIndex = Math.min(1, state.navIndex+1);
+        else if(state.focusZone==='buttons') state.buttonIndex = Math.min(buttonDefs().length-1, state.buttonIndex+1);
+        else if(state.focusZone==='timeline'){
+          state.activeFlagIndex = state.activeFlagIndex===-1 ? stepFromPlayhead('right') : Math.min(visibleFlags().length-1, state.activeFlagIndex+1);
+        }
+        else handled=false;
+      }
+      else if(e.key==='Enter'){
+        if(state.focusZone==='nav'){
+          if(state.navIndex===1) toggleMode();
+          else goBackToPicker();
+        } else if(state.focusZone==='buttons'){
+          activateButton(buttonDefs()[state.buttonIndex].id);
+        } else if(state.focusZone==='timeline'){
+          var flags2 = visibleFlags();
+          if(state.activeFlagIndex>=0 && flags2[state.activeFlagIndex]){ seekTo(flags2[state.activeFlagIndex]); }
+          else { state.playing = !state.playing; }
+        } else handled=false;
+      }
+      else { handled=false; }
+    }
+    if(handled) e.preventDefault();
+    render();
+  });
+
+  el.navBack.addEventListener('click', function(){ wake(); state.focusZone='nav'; state.navIndex=0; render(); goBackToPicker(); });
+  el.navMode.addEventListener('click', function(){ wake(); state.focusZone='nav'; state.navIndex=1; toggleMode(); });
+  el.scrim.addEventListener('click', function(){ state.drawerOpen=false; render(); });
+  el.stage.addEventListener('click', function(){ if(!state.awake){ wake(); render(); } });
+
+  /* ---------------- clock loop ---------------- */
+  var lastTs = performance.now();
+  setInterval(function(){
+    var now = performance.now();
+    var dt = (now-lastTs)/1000;
+    lastTs = now;
+    if(state.mode==='live'){
+      state.liveEdge = Math.min(DURATION, state.liveEdge + dt*ACCEL);
+      if(state.playing){
+        state.elapsed = Math.min(state.liveEdge, state.elapsed + dt*ACCEL);
+      }
+    } else {
+      if(state.playing){
+        state.elapsed = Math.min(DURATION, state.elapsed + dt*ACCEL);
+        if(state.elapsed>=DURATION) state.playing=false;
+      }
+    }
+    if(state.activeClip && Math.abs(state.elapsed - state.activeClip.t) > CLIP_WINDOW){
+      state.activeClip = null;
+    }
+    render();
+  }, 200);
+
+  render();
+})();
+</script>
+</body>
+</html>

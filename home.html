@@ -2,7 +2,7 @@
 <title>Stream Home Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-0:#0a0714;
@@ -22,7 +22,7 @@
     --grad-c:#ed914c;
     --focus-ring:rgba(255,255,255,0.95);
     --focus-glow:rgba(165,139,212,0.85);
-    --font-display:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    --font-display:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{background:#000;height:100%;}
@@ -555,7 +555,7 @@
   <div id="toast"></div>
 
   <div id="remote">
-    <div class="hint">ใช้ปุ่มลูกศร + Enter บนคีย์บอร์ด หรือกดรีโมทนี้</div>
+    <div class="hint">Use the arrow keys + Enter on your keyboard, or this remote</div>
     <div class="dpad">
       <span></span><button data-k="up" aria-label="up"><svg class="tri" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="12,5 19,17 5,17"></polygon></svg></button><span></span>
       <button data-k="left" aria-label="left"><svg class="tri" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="17,5 17,19 5,12"></polygon></svg></button>
@@ -1219,7 +1219,20 @@
     toast('Now playing: ' + label);
   }
 
+  // Back to the Content Picker: return via history when we came from it, otherwise open it
+  function goBackToPicker(){
+    try {
+      if(document.referrer && /content-picker\.html/.test(document.referrer) && history.length > 1){ history.back(); return; }
+    } catch(e){}
+    window.location.href = 'tv-features-test/content-picker.html';
+  }
+
   document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' || e.key === 'Backspace'){
+      goBackToPicker();
+      e.preventDefault();
+      return;
+    }
     if(e.code === 'Space' || e.key === ' '){
       toggleMobileMode();
       e.preventDefault();

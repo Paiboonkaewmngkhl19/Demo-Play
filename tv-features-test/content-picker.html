@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<!--
+  Content Picker — TV-style page where the viewer selects what to open.
+  Same design language as key-moment-navigator.html (Aurora palette, 1920x1080 canvas scaled to the window,
+  focus ring + scale on the focused item). Works with mouse/touch and with a TV remote (arrow keys + Enter).
+  Options: Live Sports (Key Moment Navigator), Concert (Multiview), Vertical (the Vertical Discovery Feed app at the
+  project root) and Home (home.html at the project root, the Stream Home prototype). Each destination has a Back control that returns here.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Picker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#050b1a;
+    --bg-1:#0a1628;
+    --bg-2:#122241;
+    --ink:#e8f4f8;
+    --ink-dim:#b9cbd4;
+    --ink-faint:rgba(232,244,248,0.55);
+    --chip-bg:rgba(232,244,248,0.07);
+    --chip-border:rgba(232,244,248,0.16);
+    --focus-ring:#00ff87;
+    --aurora-green:#00ff87;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:var(--bg-0);
+    color:var(--ink);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  #tv-frame{
+    position:relative;
+    background:#000;
+    overflow:hidden;
+    box-shadow:0 0 0 1px rgba(255,255,255,.06);
+  }
+  #canvas{
+    position:absolute; top:0; left:0;
+    width:1920px; height:1080px;
+    transform-origin:top left;
+    background:
+      radial-gradient(60% 45% at 15% 0%, rgba(0,255,135,.14), transparent 65%),
+      radial-gradient(55% 40% at 85% 0%, rgba(0,212,255,.12), transparent 65%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 70%);
+  }
+
+  /* ---------- Header ---------- */
+  header{ position:absolute; left:152px; right:152px; top:96px; }
+  .eyebrow{
+    font-size:16px; font-weight:700; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--aurora-green);
+  }
+  h1{ margin:14px 0 0; font-size:60px; font-weight:800; letter-spacing:-.01em; line-height:1.1; }
+  .sub{ margin:14px 0 0; font-size:22px; font-weight:500; color:var(--ink-dim); }
+
+  /* ---------- Category grid ---------- */
+  #grid{
+    position:absolute; left:152px; top:376px;
+    width:1616px;
+    display:grid; grid-template-columns:repeat(4, 374px); grid-auto-rows:380px; gap:32px;
+  }
+  .card{
+    --accent:#00ff87;
+    position:relative;
+    display:flex; flex-direction:column; justify-content:flex-end; gap:6px;
+    padding:32px 34px;
+    text-align:left; font:inherit; color:inherit;
+    background:var(--chip-bg);
+    border:2px solid var(--chip-border);
+    border-radius:24px;
+    cursor:pointer;
+    outline:none;
+    overflow:hidden;
+    transition:transform .2s cubic-bezier(.22,1.4,.5,1), box-shadow .2s ease, background .2s ease, border-color .2s ease;
+  }
+  .card::before{ /* accent wash behind the icon */
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(280px 220px at 18% 8%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
+    pointer-events:none;
+  }
+  .card .ic{
+    position:absolute; left:34px; top:32px;
+    width:72px; height:72px; border-radius:20px;
+    display:flex; align-items:center; justify-content:center;
+    background:color-mix(in srgb, var(--accent) 18%, transparent);
+    color:var(--accent);
+  }
+  .card .ic svg{ width:36px; height:36px; }
+  .card b{ position:relative; font-size:31px; font-weight:700; line-height:1.15; }
+  .card span.desc{ position:relative; font-size:16px; line-height:1.4; font-weight:500; color:var(--ink-faint); }
+  /* same focus treatment as the other TV prototypes */
+  .focused{
+    transform:scale(1.06);
+    box-shadow:0 0 0 4px var(--focus-ring);
+    z-index:5;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{
+    position:absolute; left:152px; right:152px; bottom:84px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hints{ display:flex; gap:40px; font-size:18px; font-weight:500; color:var(--ink-faint); }
+  .hints kbd{
+    font:inherit; font-weight:700; color:var(--ink);
+    padding:4px 10px; margin-right:8px; border-radius:8px;
+    background:var(--chip-bg); border:1px solid var(--chip-border);
+  }
+</style>
+</head>
+<body>
+
+<div id="tv-frame">
+  <div id="canvas">
+    <header>
+      <div class="eyebrow">Content Picker</div>
+      <h1>What do you want to watch?</h1>
+      <p class="sub">Pick something to watch, then press Enter or click to open it</p>
+    </header>
+
+    <div id="grid" role="group" aria-label="Content options"></div>
+
+    <footer>
+      <div class="hints">
+        <span><kbd>←↑↓→</kbd>Move</span>
+        <span><kbd>Enter</kbd>Open</span>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ---------------- data ---------------- */
+  // Every option opens an existing prototype (`href`, relative to this file).
+  var CATEGORIES = [
+    { id:'sports',   name:'Key Moments', desc:'Jump straight to goals, cards and highlights', accent:'#00E676', icon:'ball',  href:'key-moment-navigator.html' },
+    { id:'concert',  name:'Multi-View',  desc:'Watch several camera angles side by side', accent:'#E040FB', icon:'music', href:'multiview-prototype.html' },
+    { id:'vertical', name:'Clips Reels', desc:'Swipe through short vertical clips', accent:'#FF6D00', icon:'phone', href:'../?from=picker' },
+    { id:'home',     name:'Home',        desc:'Smart TV–style home with content rails', accent:'#00E5FF', icon:'home',  href:'../home.html' }
+  ];
+  var COLS = 4;
+
+  var ICONS = {
+    ball:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.5 2.5-1.3 4h-4.4l-1.3-4z"/><path d="M12 3v5M20.5 9.5L15.5 10.5M17.5 19l-3.3-4.5M6.5 19l3.3-4.5M3.5 9.5l5 1"/></svg>',
+    music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
+    home:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><path d="M10 20v-6h4v6"/></svg>'
+  };
+
+  /* ---------------- state ---------------- */
+  // Picking an option opens it straight away. The last one opened is remembered so that coming back
+  // (via the Back control on each demo) lands the focus on it.
+  var state = { focus:0 };
+  try { var last = localStorage.getItem('contentPicker.last'); if(last) state.focus = indexOf(last); } catch(e){}
+
+  function indexOf(id){ for(var i=0;i<CATEGORIES.length;i++) if(CATEGORIES[i].id===id) return i; return 0; }
+
+  /* ---------------- render ---------------- */
+  var grid = document.getElementById('grid');
+  var cards = [];
+
+  CATEGORIES.forEach(function(c, i){
+    var el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'card';
+    el.style.setProperty('--accent', c.accent);
+    el.innerHTML =
+      '<span class="ic">'+ICONS[c.icon]+'</span>'+
+      '<b>'+c.name+'</b><span class="desc">'+c.desc+'</span>';
+    el.addEventListener('click', function(){ state.focus=i; render(); open(i); });
+    el.addEventListener('mouseenter', function(){ if(state.focus!==i){ state.focus=i; render(); } });
+    grid.appendChild(el);
+    cards.push(el);
+  });
+
+  function render(){
+    cards.forEach(function(el, i){
+      el.classList.toggle('focused', state.focus===i);
+      el.tabIndex = state.focus===i ? 0 : -1;
+    });
+    // keep real DOM focus in step with the visual focus (screen readers, Tab)
+    if(document.activeElement !== cards[state.focus]) cards[state.focus].focus({preventScroll:true});
+  }
+
+  function open(i){
+    var c = CATEGORIES[i];
+    try { localStorage.setItem('contentPicker.last', c.id); } catch(e){}
+    window.location.href = c.href;
+  }
+
+  /* ---------------- remote / keyboard ---------------- */
+  window.addEventListener('keydown', function(e){
+    var n = CATEGORIES.length, handled = true;
+    if(e.key==='ArrowRight'){ if(state.focus < n-1) state.focus++; }
+    else if(e.key==='ArrowLeft'){ if(state.focus > 0) state.focus--; }
+    else if(e.key==='ArrowDown'){ if(state.focus+COLS < n) state.focus += COLS; }
+    else if(e.key==='ArrowUp'){ if(state.focus-COLS >= 0) state.focus -= COLS; }
+    else if(e.key==='Enter' || e.key===' '){ e.preventDefault(); open(state.focus); return; }
+    else handled = false;
+    if(handled){ e.preventDefault(); render(); }
+  });
+
+  /* ---------------- layout scaling (same approach as the other prototypes) ---------------- */
+  var DESIGN_W = 1920, DESIGN_H = 1080;
+  var frame = document.getElementById('tv-frame');
+  var canvas = document.getElementById('canvas');
+  function layout(){
+    var scale = Math.min(window.innerWidth/DESIGN_W, window.innerHeight/DESIGN_H);
+    frame.style.width = (DESIGN_W*scale)+'px';
+    frame.style.height = (DESIGN_H*scale)+'px';
+    canvas.style.transform = 'scale('+scale+')';
+  }
+  window.addEventListener('resize', layout);
+  layout();
+
+  render();
+})();
+</script>
+</body>
+</html>

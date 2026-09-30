@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!--
+  TV Home — smart-TV landing screen prototype: just rows of content cards, nothing else.
+  Same design language as the other prototypes in this folder (Aurora palette, 1920x1080 canvas
+  scaled to the window, focus ring + scale on the focused item, rail-viewport/rail-track scroll
+  mechanic shared with multiview-prototype.html). Works with mouse/touch and with a TV remote
+  (arrow keys + Enter, Esc/Backspace to leave). All titles/photos are original demo content, not
+  tied to any real show, channel or franchise.
+  Photos: Unsplash (free to use, no attribution required).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TV Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Aurora Boreal Nórdica — same palette as the other prototypes */
+    --bg-0:#050b1a;
+    --bg-1:#0a1628;
+    --ink:#e8f4f8;
+    --ink-faint:rgba(232,244,248,0.55);
+    --chip-bg:rgba(232,244,248,0.07);
+    --chip-border:rgba(232,244,248,0.16);
+    --focus-ring:#00ff87;
+    --side:110px; /* side margin used across every prototype in this folder */
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:var(--bg-0);
+    color:var(--ink);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  body, #tv-frame, #canvas{ touch-action:none; }
+
+  #tv-frame{
+    position:relative;
+    background:#000;
+    overflow:hidden;
+    box-shadow:0 0 0 1px rgba(255,255,255,.06);
+  }
+  #canvas{
+    position:absolute; top:0; left:0;
+    width:1920px; height:1080px;
+    transform-origin:top left;
+    background:radial-gradient(1400px 800px at 50% 0%, var(--bg-1) 0%, var(--bg-0) 65%);
+    overflow:hidden;
+  }
+
+  /* ---------- Top nav (just the back control, shared with every other prototype) ---------- */
+  .topnav{
+    position:absolute; top:0; left:0; right:0; z-index:100;
+    height:112px; display:flex; align-items:center; gap:16px; padding:0 var(--side);
+  }
+  .back-btn{
+    width:56px;height:56px;border-radius:999px;
+    background:var(--chip-bg);border:1px solid var(--chip-border);
+    color:var(--ink);font-size:28px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex:0 0 auto;
+    transition:transform .22s ease, box-shadow .22s ease;
+  }
+  .back-btn.focused{transform:scale(1.1);box-shadow:0 0 0 4px var(--focus-ring);}
+  .brand{ font-size:22px; font-weight:800; letter-spacing:-.01em; }
+
+  /* ---------- Rails ---------- */
+  #rails{ position:absolute; left:0; right:0; top:150px; bottom:60px; overflow:hidden; }
+  .rail{ margin-bottom:44px; }
+  .rail-label{ margin:0 0 16px; padding:0 var(--side); font-size:19px; font-weight:700; color:var(--ink); }
+  .rail-viewport{ overflow:hidden; padding:16px 0; margin:-16px 0; }
+  .rail-track{ display:flex; gap:18px; padding:0 var(--side); transition:transform .38s cubic-bezier(.22,.9,.32,1); will-change:transform; }
+
+  .tile{
+    position:relative; flex:0 0 auto; width:250px; height:150px; border-radius:14px; overflow:hidden;
+    background:#000; cursor:pointer; border:none; padding:0;
+    box-shadow:0 0 16px rgba(0,0,0,.5);
+    transition:transform .22s ease, box-shadow .22s ease;
+  }
+  .tile img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .tile.focused{ transform:scale(1.08); box-shadow:0 0 0 4px var(--focus-ring); z-index:5; }
+  .tile-scrim{ position:absolute; left:0; right:0; bottom:0; height:60%; background:linear-gradient(0deg, rgba(5,11,26,.92) 0%, transparent 100%); }
+  .tile-title{ position:absolute; left:12px; right:12px; bottom:10px; font-size:13px; font-weight:700; line-height:1.3; }
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:absolute; left:50%; bottom:32px; transform:translate(-50%, 20px);
+    padding:16px 32px; border-radius:999px; font-size:18px; font-weight:600;
+    background:rgba(18,34,65,.96); border:1px solid var(--chip-border);
+    opacity:0; pointer-events:none; z-index:200;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  #toast.show{ opacity:1; transform:translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<div id="tv-frame">
+  <div id="canvas">
+    <nav class="topnav">
+      <button class="back-btn" id="backBtn" aria-label="Back">‹</button>
+      <span class="brand">stream</span>
+    </nav>
+
+    <div id="rails"></div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Every title/photo below is original demo content — not tied to any real show,
+  // channel or franchise.
+  var ROWS = [
+    { label:'Continue watching', items:[
+      { title:'Northlight · EP4', img:'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&h=300&fit=crop&auto=format' },
+      { title:'Paper Cranes', img:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&h=300&fit=crop&auto=format' },
+      { title:'Roadside Diner', img:'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&h=300&fit=crop&auto=format' },
+      { title:'The Quiet Circuit', img:'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&h=300&fit=crop&auto=format' },
+      { title:'Harbor Lights', img:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&h=300&fit=crop&auto=format' }
+    ]},
+    { label:'Recommended for you', items:[
+      { title:'Glass Horizon', img:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=300&fit=crop&auto=format' },
+      { title:'Midnight Freight', img:'https://images.unsplash.com/photo-1517840545241-b491010a5590?w=500&h=300&fit=crop&auto=format' },
+      { title:'Second Wind', img:'https://images.unsplash.com/photo-1487956382158-bb926046304a?w=500&h=300&fit=crop&auto=format' },
+      { title:'Amber Route', img:'https://images.unsplash.com/photo-1500462918059-b1a0cb512f1d?w=500&h=300&fit=crop&auto=format' },
+      { title:'Low Tide', img:'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=500&h=300&fit=crop&auto=format' },
+      { title:'Field Notes', img:'https://images.unsplash.com/photo-1440581572325-0bea30075d9d?w=500&h=300&fit=crop&auto=format' }
+    ]},
+    { label:'Trending now', items:[
+      { title:'Wire Season', img:'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=500&h=300&fit=crop&auto=format' },
+      { title:'Foghorn', img:'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=500&h=300&fit=crop&auto=format' },
+      { title:'The Understudy', img:'https://images.unsplash.com/photo-1517602302552-471fe67acf66?w=500&h=300&fit=crop&auto=format' },
+      { title:'Open Water', img:'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=500&h=300&fit=crop&auto=format' },
+      { title:'Concrete Bloom', img:'https://images.unsplash.com/photo-1449034446853-66c86144b0ad?w=500&h=300&fit=crop&auto=format' }
+    ]}
+  ];
+
+  var toastTimer;
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2000);
+  }
+
+  // Back to the Content Picker: return via history when we came from it, otherwise open it
+  function goBackToPicker(){
+    try {
+      if(document.referrer && /content-picker\.html/.test(document.referrer) && history.length > 1){ history.back(); return; }
+    } catch(e){}
+    window.location.href = 'content-picker.html';
+  }
+
+  /* ---------- Build the rails ---------- */
+  var railsEl = document.getElementById('rails');
+  // sections: [nav, ...content rows] — Up/Down moves between sections, Left/Right within one
+  var sections = [ { kind:'nav', els:[document.getElementById('backBtn')] } ];
+
+  ROWS.forEach(function(row){
+    var wrap = document.createElement('section'); wrap.className = 'rail';
+    var label = document.createElement('p'); label.className = 'rail-label'; label.textContent = row.label;
+    wrap.appendChild(label);
+    var viewport = document.createElement('div'); viewport.className = 'rail-viewport';
+    var track = document.createElement('div'); track.className = 'rail-track';
+    var els = row.items.map(function(item){
+      var tile = document.createElement('button');
+      tile.type = 'button'; tile.className = 'tile';
+      tile.innerHTML =
+        '<img src="' + item.img + '" alt="' + item.title + '" draggable="false">' +
+        '<span class="tile-scrim"></span>' +
+        '<span class="tile-title">' + item.title + '</span>';
+      track.appendChild(tile);
+      return tile;
+    });
+    viewport.appendChild(track); wrap.appendChild(viewport);
+    railsEl.appendChild(wrap);
+    sections.push({ kind:'rail', track:track, els:els, data:row.items });
+  });
+
+  /* ---------- Focus / navigation engine ---------- */
+  var state = { section:1, col:0 };
+  function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+
+  function updateRailScroll(sIdx){
+    var sec = sections[sIdx];
+    var tileW = sec.els[0].getBoundingClientRect().width || 250;
+    var gap = 18;
+    var viewportWidth = 1920;
+    var tileLeft = 110 + state.col*(tileW+gap);
+    var centerOffset = tileLeft - (viewportWidth/2) + (tileW/2);
+    var contentWidth = 110 + sec.els.length*(tileW+gap) - gap + 110;
+    var maxOffset = Math.max(0, contentWidth - viewportWidth);
+    var offset = clamp(centerOffset, 0, maxOffset);
+    sec.track.style.transform = 'translateX(' + (-offset) + 'px)';
+  }
+
+  function render(){
+    sections.forEach(function(sec, si){
+      sec.els.forEach(function(el, ei){ el.classList.toggle('focused', si===state.section && ei===state.col); });
+      if(sec.kind==='rail' && si===state.section) updateRailScroll(si);
+    });
+    var current = sections[state.section].els[state.col];
+    if(current && document.activeElement !== current) current.focus({preventScroll:true});
+  }
+
+  function moveSection(dir){
+    var next = clamp(state.section+dir, 0, sections.length-1);
+    if(next === state.section) return;
+    state.section = next;
+    state.col = clamp(state.col, 0, sections[state.section].els.length-1);
+  }
+  function moveCol(dir){ state.col = clamp(state.col+dir, 0, sections[state.section].els.length-1); }
+
+  function activate(){
+    var sec = sections[state.section];
+    if(sec.kind==='nav'){ goBackToPicker(); }
+    else{ toast('Playing “' + sec.data[state.col].title + '” (demo)'); }
+  }
+
+  window.addEventListener('keydown', function(e){
+    if(e.key==='Escape' || e.key==='Backspace'){ e.preventDefault(); goBackToPicker(); return; }
+    var handled = true;
+    if(e.key==='ArrowDown'){ moveSection(1); }
+    else if(e.key==='ArrowUp'){ moveSection(-1); }
+    else if(e.key==='ArrowRight'){ moveCol(1); }
+    else if(e.key==='ArrowLeft'){ moveCol(-1); }
+    else if(e.key==='Enter' || e.key===' '){ activate(); }
+    else handled = false;
+    if(handled){ e.preventDefault(); render(); }
+  });
+
+  // mouse/touch: hovering focuses, clicking focuses + activates
+  sections.forEach(function(sec, si){
+    sec.els.forEach(function(el, ei){
+      el.addEventListener('mouseenter', function(){ if(state.section!==si || state.col!==ei){ state.section=si; state.col=ei; render(); } });
+      el.addEventListener('click', function(){ state.section=si; state.col=ei; render(); activate(); });
+    });
+  });
+
+  document.addEventListener('wheel', function(e){ e.preventDefault(); }, {passive:false});
+  document.addEventListener('touchmove', function(e){ e.preventDefault(); }, {passive:false});
+
+  /* ---------------- layout scaling (same approach as the other prototypes) ---------------- */
+  var DESIGN_W = 1920, DESIGN_H = 1080;
+  var frame = document.getElementById('tv-frame');
+  var canvas = document.getElementById('canvas');
+  function layout(){
+    var scale = Math.min(window.innerWidth/DESIGN_W, window.innerHeight/DESIGN_H);
+    frame.style.width = (DESIGN_W*scale)+'px';
+    frame.style.height = (DESIGN_H*scale)+'px';
+    canvas.style.transform = 'scale('+scale+')';
+  }
+  window.addEventListener('resize', layout);
+  layout();
+
+  render();
+})();
+</script>
+</body>
+</html>
