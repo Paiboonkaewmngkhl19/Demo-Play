@@ -39,10 +39,10 @@ function redirectRootToPicker() {
   }
 }
 
-// GitHub Pages serves this repo under /Vertical-Play/, so production builds need that base path.
+// GitHub Pages serves this repo under /Demo-Play/, so production builds need that base path.
 // Dev keeps '/' so `npm run dev` stays at http://127.0.0.1:5173/.
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/Vertical-Play/' : '/',
+  base: command === 'build' ? '/Demo-Play/' : '/',
   server: {
     // `npm run dev` opens the TV Content Picker (the entry point for every demo)
     // instead of the Vertical Feed app root; the app is still served at '/'

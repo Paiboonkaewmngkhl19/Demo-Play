@@ -9,6 +9,13 @@
       <meta name="description" content="Offers a personalized vertical feed of immersive short-form previews across diverse genres, enabling users to effortlessly discover and instantly watch premium content." />
       <meta name="robots" content="noindex, nofollow" />
       <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
+      <script>
+        // The TV Content Picker is the entry point for every demo: opening the site root goes there, unless the
+        // picker's "Clips Reels" card sent us here (?from=picker). Same rule as the dev server's redirect.
+        if (new URLSearchParams(location.search).get('from') !== 'picker') {
+          location.replace('tv-features-test/content-picker.html');
+        }
+      </script>
       
     </head>
 

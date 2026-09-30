@@ -25,8 +25,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      # The standalone TV prototypes are plain HTML, so they are copied as-is next to the app
-      - run: cp -r tv-features-test dist/tv-features-test
+      # The standalone TV prototypes are plain HTML, so they are copied as-is next to the app,
+      # along with the Stream Home page (home.html, the picker's Home card) and its image folders
+      - run: cp -r tv-features-test home.html badges icons posters posters_portrait dist/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
