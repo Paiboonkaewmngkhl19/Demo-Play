@@ -1,0 +1,8 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="84" height="84" viewBox="0 0 84 84" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="IconButton">
+<circle id="Background" opacity="0.8" cx="42" cy="42" r="42" fill="#4A4A4A"/>
+<g id="Icon" opacity="0.8">
+<path id="shape" d="M46.0127 30.2627C46.6961 29.5793 47.8039 29.5793 48.4873 30.2627C49.1707 30.9461 49.1707 32.0539 48.4873 32.7373L39.2246 42L48.4873 51.2627C49.1707 51.9461 49.1707 53.0539 48.4873 53.7373C47.8039 54.4207 46.6961 54.4207 46.0127 53.7373L35.5127 43.2373C34.8293 42.5539 34.8293 41.4461 35.5127 40.7627L46.0127 30.2627Z" fill="#E8E8E8"/>
+</g>
+</g>
+</svg>

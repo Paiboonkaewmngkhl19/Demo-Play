@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <!--
-  Live Stream — TV player overlay for a live channel, built from the Figma frame
-  "player live tv_Stream" (PLAY-player, node 1146:37842).
+  Concert Live — the Live Stream player (live-stream.html) set up for a live concert: same overlay, controls,
+  Key Moment mode and auto-hide, with concert details and song moments, and no sports scoreboard.
+  The picture is a YouTube video (YT_ID below) played through the YouTube IFrame Player API with YouTube's own
+  controls hidden, so this page's seek bar, skips, Key Moments and play/pause drive it. The video loops; the
+  stream's position maps onto it modulo its length. It starts muted (browser autoplay rules) and unmutes on the
+  first key press or click. The screen stays black until the video starts.
+  Needs to be served over http(s) (dev server or GitHub Pages), not opened as a file.
   Same conventions as the other prototypes: 1920x1080 canvas scaled to the window, works with mouse/touch
   and with a TV remote (arrow keys + Enter, Esc/Backspace returns to the Content Picker).
-  Assets in live-stream-assets/ are exported from that Figma frame, except moment-*.jpg (frames captured from the video).
-  The picture is a YouTube video (YT_ID below: NBA's Suns at Nets full-game highlights) played through the YouTube
-  IFrame Player API with YouTube's own controls hidden, so this page's seek bar, skips, Key Moments and play/pause
-  drive it. The video loops; the stream's position maps onto it modulo its length. It starts muted (browser autoplay
-  rules) and unmutes on the first key press or click. The screen stays black until the video starts.
-  Needs to be served over http(s) (dev server or GitHub Pages), not opened as a file.
+  Player assets are shared with Live Stream (live-stream-assets/, exported from the Figma frame "player live
+  tv_Stream", PLAY-player node 1146:37842).
   Controls are desktop-sized by default (see layout()); open with ?mode=tv for the exact Figma TV sizes.
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Live Stream</title>
+<title>Concert Live</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -56,9 +57,11 @@
   }
 
   /* ---------- Video ---------- */
+  /* fills the 1920x1080 canvas; the poster shows until the concert video is added */
   .video{
     position:absolute; inset:0; width:1920px; height:1080px; object-fit:cover; pointer-events:none;
   }
+
   /* YouTube player: fades in once the video is actually playing; it never takes the mouse (the overlay does) */
   .yt-wrap{ opacity:0; transition:opacity .6s ease; background:#000; overflow:hidden; }
   .yt-wrap.ready{ opacity:1; }
@@ -79,9 +82,9 @@
      in desktop mode layout() sets it so the controls keep a fixed on-screen size, like a web video player.
      Each block is widened by 1/--ui before scaling, so it still spans the full canvas width. */
   #canvas{ --ui:1; }
-  .channel, .controls{ width:calc(1920px / var(--ui)); transform:scale(var(--ui)); }
+  .channel, .controls, .mv-panel{ width:calc(1920px / var(--ui)); transform:scale(var(--ui)); }
   .channel{ transform-origin:top left; }
-  .controls{ transform-origin:bottom left; }
+  .controls, .mv-panel{ transform-origin:bottom left; }
 
   /* ---------- Channel header ---------- */
   .channel{
@@ -93,6 +96,9 @@
     width:112px; height:112px; border-radius:100px; flex:none;
     background:#404045; overflow:hidden;
   }
+  /* Cool Channel logo: transparent PNG with dark film reels, so it sits on white, fitted inside the circle */
+  .concert-avatar{ background:#fff; padding:10px; }
+  .concert-avatar img{ object-fit:contain; border-radius:0; }
   .avatar img{ width:100%; height:100%; object-fit:cover; display:block; border-radius:100px; }
   .channel-text{ height:112px; display:flex; flex-direction:column; gap:24px; justify-content:center; }
   .channel-title{ margin:0; font-size:40px; line-height:32px; font-weight:700; white-space:nowrap; }
@@ -139,6 +145,8 @@
   /* line glyphs (the Back chevron) are stroked rather than filled */
   .icon-btn .btn-glyph path.stroke{ fill:none; stroke:var(--on-surface); stroke-width:3.5; stroke-linecap:round; stroke-linejoin:round; transition:stroke .15s ease; }
   .icon-btn.focused .btn-glyph path.stroke{ fill:none; stroke:#3B3C3E; }
+  /* Multi-View's outline icon is drawn at 3px in its Figma export */
+  .icon-btn.mv .btn-glyph path.stroke{ stroke-width:3; }
   /* Start Over <-> Watch Live: the same icon mirrored while it would take you back to live */
   .icon-btn .btn-glyph, .icon-btn > img{ transform-box:fill-box; transform-origin:center; transition:opacity .15s ease, transform .25s ease; }
   .icon-btn.flipped .btn-glyph, .icon-btn.flipped > img{ transform:scaleX(-1); }
@@ -305,10 +313,74 @@
   }
   .km-moment-time{ font-size:16px; line-height:1.2; font-weight:500; letter-spacing:-0.304px; color:#d9d9d9; white-space:nowrap; font-variant-numeric:tabular-nums; }
 
+  /* ---------- Multi-View ----------
+     Figma "PLAY-player" node 1217:6576. The Multi-View button opens a panel in place of the controls: Back and
+     Multi-View buttons, a divider, the "Screen Choice" pill (1/2/3/4/6 screens) and "Customize your screen" with one
+     16:9 card per camera angle. Picking a layout splits the picture right away. Picking cards sets their priority:
+     the number on a card is its screen (1 = main). Every screen plays at once, as cameras on the same concert: each is
+     its own YouTube player kept in step with the stream clock at its camera's offset. Only screen 1 has sound. */
+  .mv-screens{ position:absolute; inset:0; pointer-events:none; }
+  .mv-screen{ position:absolute; overflow:hidden; background:#000; display:none; }
+  .mv-screen img{ width:100%; height:100%; object-fit:cover; display:block; }
+  /* the screen's own player: covers the still once it's playing */
+  .mv-yt{ position:absolute; inset:0; overflow:hidden; opacity:0; transition:opacity .6s ease; }
+  .mv-yt.ready{ opacity:1; }
+  .mv-yt iframe{ position:absolute; border:0; pointer-events:none; transform:scale(1.12); }
+  .mv-screen.empty .mv-yt{ display:none; }
+  .mv-panel{ position:absolute; left:0; bottom:0; display:none; flex-direction:column; gap:32px; padding:60px 90px; }
+  #canvas.mv-open .mv-panel{ display:flex; animation:kmRailIn .35s ease-out; }
+  #canvas.mv-open .controls{ display:none; }
+  .mv-top{ display:flex; gap:40px; align-items:flex-end; }
+  .mv-btns{ display:flex; gap:24px; align-items:center; }
+  .mv-divider{ width:3px; height:87px; margin:-1.5px 0; display:block; flex:none; }
+  .mv-choice{ height:84px; padding:0 7.5px; border-radius:100px; background:#4a4a4a; display:flex; gap:24px; align-items:center; }
+  .mv-opt{ position:relative; width:69px; height:69px; border-radius:100px; flex:none; transition:background .15s ease; }
+  .mv-opt > img, .mv-opt > svg{
+    position:absolute; left:calc(50% + .5px); top:calc(50% + .5px); width:38px; height:46px;
+    transform:translate(-50%,-50%); display:block; overflow:visible;
+  }
+  .mv-opt path{ transition:stroke .15s ease; }
+  /* chosen layout: Figma's on-surface-disabled fill; focused (not in Figma): white with a dark icon, like the buttons */
+  .mv-opt.selected{ background:rgba(232,232,232,.4); }
+  .mv-opt.focused{ background:#fff; }
+  .mv-opt.focused path{ stroke:#3B3C3E; }
+  /* tooltip naming the layout ("2 Screens"), same style as the icon buttons'; raised so it lines up with theirs */
+  .mv-opt .tooltip{ top:-89.5px; }
+  .mv-opt.focused .tooltip{ display:flex; }
+  .mv-section{ display:flex; flex-direction:column; gap:24px; }
+  .mv-label{ font-size:24px; line-height:32px; font-weight:500; color:var(--inverse-surface); white-space:nowrap; }
+  .mv-cards{ display:flex; gap:24px; transition:transform .3s ease; }
+  .mv-card{ position:relative; flex:none; width:320px; height:180px; border-radius:16px; background:var(--surface-container-high); }
+  .mv-card img{ width:100%; height:100%; object-fit:cover; border-radius:16px; display:block; }
+  /* focus ring, as on the Key Moment cards (not in the Figma frame) */
+  .mv-card::after{
+    content:''; position:absolute; inset:-6px; border-radius:22px;
+    border:4px solid var(--on-surface); opacity:0; transition:opacity .15s ease; pointer-events:none;
+  }
+  .mv-card.focused::after{ opacity:1; }
+  /* priority number = the screen the video is on (1 plays); cards without a number aren't on screen */
+  .mv-card img{ transition:opacity .15s ease; }
+  .mv-card:not(.picked) img{ opacity:.45; }
+  .mv-badge{
+    position:absolute; left:12px; top:12px; width:44px; height:44px; border-radius:50%; display:none;
+    align-items:center; justify-content:center; font-size:24px; font-weight:700; line-height:1;
+    background:#fff; color:#1b1b1b; box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  .mv-card.picked .mv-badge{ display:flex; }
+  /* a screen with no video picked for it yet */
+  .mv-screen.empty{ background:#141414; display:flex; align-items:center; justify-content:center; }
+  .mv-screen.empty img{ display:none; }
+  .mv-screen span{ display:none; font-size:24px; line-height:32px; font-weight:500; color:var(--on-surface-variant); }
+  .mv-screen.empty span{ display:block; }
+  /* the Multi-View button shows "Active" while the panel is open or the screen is split */
+  #canvas.mv-active .icon-btn.mv:not(.focused) .btn-bg{ fill:var(--on-surface); opacity:1; }
+  #canvas.mv-active .icon-btn.mv .btn-glyph{ opacity:1; }
+  #canvas.mv-active .icon-btn.mv .btn-glyph path.stroke{ stroke:#3B3C3E; }
+
   /* ---------- Auto-hide ("wake") ----------
      After 3s without input the header fades up and the controls fade down; the LIVE tag stays.
      `translate` is used (not `transform`) so it stacks with the --ui scale on .channel/.controls. */
-  .scrim, .channel, .row.buttons, .seek, .row.chips > .group:first-child, .km-rail, .badge.viewers{
+  .scrim, .channel, .row.buttons, .seek, .row.chips > .group:first-child, .km-rail, .mv-panel, .badge.viewers{
     transition:opacity .45s ease, translate .45s ease;
   }
   #canvas.ui-hidden .scrim{ opacity:0; }
@@ -317,6 +389,7 @@
   #canvas.ui-hidden .seek,
   #canvas.ui-hidden .row.chips > .group:first-child,
   #canvas.ui-hidden .km-rail,
+  #canvas.ui-hidden .mv-panel,
   #canvas.ui-hidden .badge.viewers{ opacity:0; translate:0 40px; pointer-events:none; }
 
   /* Toast */
@@ -334,23 +407,23 @@
 
 <div id="tv-frame">
   <div id="canvas">
+    <!-- Concert video: put the file in concert-assets/ and add it as the src, e.g. src="concert-assets/concert.mp4" -->
     <!-- the YouTube API swaps #ytPlayer for its iframe -->
     <div class="video yt-wrap" id="ytWrap"><div id="ytPlayer"></div></div>
-
+    <!-- Multi-View: screens 2-6 of a split layout, each with its own muted player (screen 1 is the video above) -->
+    <div class="mv-screens" id="mvScreens"></div>
     <div class="scrim ui" id="scrim"></div>
-
     <div class="ui" id="ui">
       <header class="channel">
-        <div class="avatar"><img src="https://tr.play-rfcdn.ais.th/iptvepg/layout/epg/poster/202606/2606302071773724864557057.png" alt="PLAY Sports 55"
-          onerror="this.onerror=null; this.src='live-stream-assets/channel-logo.png'"></div>
+        <div class="avatar concert-avatar"><img src="concert-assets/channel-cool.png" alt="Cool Channel"></div>
         <div class="channel-text">
-          <h1 class="channel-title">Brooklyn Nets vs Phoenix Suns</h1>
+          <h1 class="channel-title">TOMORROW X TOGETHER — Love Language</h1>
           <div class="channel-meta">
-            <span>Play Sport 55</span>
+            <span>Cool Channel</span>
             <span class="crown"><span><img src="live-stream-assets/crown.svg" alt="Premium"></span></span>
-            <span class="countdown" aria-label="Channel number">555</span>
+            <span class="countdown" aria-label="Channel number">701</span>
             <img class="sep" src="live-stream-assets/dot-separator.svg" alt="">
-            <span>20:00 - 22:00</span>
+            <span>21:00 - 23:30</span>
           </div>
         </div>
       </header>
@@ -363,6 +436,9 @@
             </button>
             <button class="icon-btn key" data-row="0" data-action="keyMoments" data-label="View Key Moment" aria-label="View key moment">
               <img src="live-stream-assets/btn-key-moment-focused.svg" alt="">
+            </button>
+            <button class="icon-btn mv" data-row="0" data-action="multiView" data-label="Multi-View" aria-label="Multi-view">
+              <img src="concert-assets/btn-multiview.svg" alt="">
             </button>
           </div>
           <div class="group">
@@ -392,13 +468,13 @@
               <i class="preview-arrow"></i>
             </div>
             <div class="km-card" id="kmCard" aria-live="polite">
-              <img id="kmImg" src="live-stream-assets/moment-045.jpg" alt="">
+              <img id="kmImg" src="concert-assets/moment-010.jpg" alt="">
               <div class="km-title" id="kmTitle"></div>
               <span class="km-tag" id="kmTag"></span>
             </div>
             <div class="handle" id="handle"><img src="live-stream-assets/seek-handle.svg" alt=""></div>
             <div class="preview" id="preview" aria-hidden="true">
-              <div class="preview-thumb" id="previewThumb"><img src="live-stream-assets/moment-045.jpg" alt=""></div>
+              <div class="preview-thumb" id="previewThumb"><img src="concert-assets/moment-010.jpg" alt=""></div>
               <div class="preview-time" id="previewTime">00:00</div>
               <i class="preview-arrow"></i>
             </div>
@@ -412,13 +488,35 @@
             <button class="chip km-hint" data-row="2" data-action="kmSelect">Select Key Moment</button>
           </div>
           <div class="group">
-            <div class="badge viewers"><img src="live-stream-assets/icon-viewers.svg" alt="Viewers"><span>1.5 K</span></div>
+            <div class="badge viewers"><img src="live-stream-assets/icon-viewers.svg" alt="Viewers"><span>99.9 K</span></div>
             <div class="badge live"><span class="dot"></span><span>LIVE</span></div>
           </div>
         </div>
 
         <!-- Key Moment mode only: one card per moment, filled in by enterKeyMoments() -->
         <div class="km-rail" id="kmRail"><div class="km-rail-track" id="kmRailTrack"></div></div>
+      </section>
+
+      <!-- Multi-View panel, shown in place of the controls (see openMulti) -->
+      <section class="mv-panel" id="mvPanel" aria-label="Multi-View">
+        <div class="mv-top">
+          <div class="mv-btns">
+            <button class="icon-btn" data-mv="close" data-label="Back" aria-label="Back"><img src="concert-assets/mv-back.svg" alt=""></button>
+            <button class="icon-btn mv" data-mv="close" data-label="Multi-View" aria-label="Close multi-view"><img src="concert-assets/btn-multiview.svg" alt=""></button>
+          </div>
+          <img class="mv-divider" src="concert-assets/mv-divider.svg" alt="">
+          <div class="mv-choice" aria-label="Screen layout">
+          <button class="mv-opt" data-mv="layout" data-n="1" data-label="1 Screen" aria-label="1 Screen"><img src="concert-assets/mv-screen-1.svg" alt=""></button>
+          <button class="mv-opt" data-mv="layout" data-n="2" data-label="2 Screens" aria-label="2 Screens"><img src="concert-assets/mv-screen-2.svg" alt=""></button>
+          <button class="mv-opt" data-mv="layout" data-n="3" data-label="3 Screens" aria-label="3 Screens"><img src="concert-assets/mv-screen-3.svg" alt=""></button>
+          <button class="mv-opt" data-mv="layout" data-n="4" data-label="4 Screens" aria-label="4 Screens"><img src="concert-assets/mv-screen-4.svg" alt=""></button>
+          <button class="mv-opt" data-mv="layout" data-n="6" data-label="6 Screens" aria-label="6 Screens"><img src="concert-assets/mv-screen-6.svg" alt=""></button>
+          </div>
+        </div>
+        <div class="mv-section">
+          <div class="mv-label">Customize your screen</div>
+          <div class="mv-cards" id="mvCards"></div>
+        </div>
       </section>
     </div>
 
@@ -453,7 +551,7 @@
   });
 
   /* ---------------- tooltips ---------------- */
-  document.querySelectorAll('.icon-btn').forEach(function(btn){
+  document.querySelectorAll('.icon-btn, .mv-opt').forEach(function(btn){
     var tip = document.createElement('span');
     tip.className = 'tooltip';
     tip.innerHTML = '<span class="tooltip-body"></span><span class="tooltip-arrow"><i></i></span>';
@@ -485,8 +583,8 @@
   // Left label = elapsed time of the picture on screen, starting at 00:00.
   // FAST_SPEED = seconds of video moved per second the key is held (fast rewind / forward)
   var SKIP_SECONDS = 10, FAST_SPEED = 10, HOLD_MS = 400, SCRUB_LINGER_MS = 1000;
-  // the stream opens one video length in (VIDEO_LEN, see YouTube video below), so the moments are behind live
-  var VIDEO_LEN = 969;
+  // the concert stream opens one video length in (VIDEO_LEN, see YouTube video below), so the moments are behind live
+  var VIDEO_LEN = 199;
   var state = { row:1, col:0, live:VIDEO_LEN, pos:VIDEO_LEN, playing:true };
 
   function pad(n){ return (n<10 ? '0' : '') + n; }
@@ -665,17 +763,17 @@
   window.addEventListener('blur', seekKeyUp);
 
   /* ---------------- Key Moment mode ---------------- */
-  // Moments in the game video, at fixed times (seconds into the video). img = a frame captured from the video at
+  // Moments in the concert video, at fixed times (seconds into the video). img = a frame captured from the video at
   // that time, used on the checkpoint card, the rail card and the scrub preview. The stream opens one video length
-  // in (see state above), so every moment is already in the past. On entering the mode the bar's scale is frozen
+  // in (see state below), so every moment is already in the past. On entering the mode the bar's scale is frozen
   // to the stream length at that moment (km.span), so checkpoints keep both their time and their spot on the bar.
   // The bar's right end still stands for live: watching live keeps it full while the time carries on counting.
   var KEY_MOMENTS = [
-    { start:45,  end:110, title:'Opening tip-off', tag:'Q1',    img:'live-stream-assets/moment-045.jpg' },
-    { start:315, end:390, title:'Second quarter',  tag:'Q2',    img:'live-stream-assets/moment-315.jpg' },
-    { start:615, end:700, title:'Third quarter',   tag:'Q3',    img:'live-stream-assets/moment-615.jpg' },
-    { start:795, end:850, title:'Fourth quarter',  tag:'Q4',    img:'live-stream-assets/moment-795.jpg' },
-    { start:855, end:880, title:'Final buzzer',    tag:'Final', img:'live-stream-assets/moment-855.jpg' }
+    { start:10,  end:28,  title:'Intro',       tag:'Intro',  img:'concert-assets/moment-010.jpg' },
+    { start:30,  end:58,  title:'First verse', tag:'Verse',  img:'concert-assets/moment-030.jpg' },
+    { start:80,  end:100, title:'Chorus',      tag:'Chorus', img:'concert-assets/moment-080.jpg' },
+    { start:150, end:168, title:'Dance break', tag:'Dance',  img:'concert-assets/moment-150.jpg' },
+    { start:190, end:197, title:'Ending',      tag:'Outro',  img:'concert-assets/moment-190.jpg' }
   ];
   var km = { on:false, idx:null, items:[], span:0 };
   var kmSegs = document.getElementById('kmSegs'), kmMarks = document.getElementById('kmMarks');
@@ -970,6 +1068,7 @@
       render();
       return;
     }
+    if(action === 'multiView'){ openMulti(); return; }
     toast(el.getAttribute('data-label') || el.textContent + ' (demo)');
   }
 
@@ -985,7 +1084,7 @@
   // The page's own clock (state.pos / state.playing) stays in charge; syncVideo() makes the YouTube player follow
   // it: play/pause, and a seek whenever the picture is more than SYNC_SLACK seconds off (seeks, skips, Key Moments,
   // or drift from buffering). While a checkpoint is selected the picture shows that moment.
-  var YT_ID = '-HgamMayc20', SYNC_SLACK = 2;
+  var YT_ID = 'W-LOSGElZ_M', SYNC_SLACK = 2;
   var yt = null, ytReady = false, ytWrap = document.getElementById('ytWrap');
   window.onYouTubeIframeAPIReady = function(){
     yt = new YT.Player('ytPlayer', {
@@ -1003,27 +1102,221 @@
   document.head.appendChild(ytScript);
 
   function syncVideo(){
-    if(!ytReady || !yt.getPlayerState) return;
-    var ps = yt.getPlayerState(), S = YT.PlayerState;
+    if(ytReady && yt.getPlayerState) syncPlayer(yt, mvOffset(), true);
+    syncScreens();   // Multi-View: the other screens follow the same clock
+  }
+  // Keep one player on the stream clock, shifted by `offset` seconds (its camera); `on` = false pauses it
+  function syncPlayer(p, offset, on){
+    var ps = p.getPlayerState(), S = YT.PlayerState;
     // mid-glide (10s skip) or mid fast-scrub: hold the picture still and seek once it settles
-    if(skipAnim || fastTimer){ if(ps === S.PLAYING) yt.pauseVideo(); return; }
+    if(skipAnim || fastTimer){ if(ps === S.PLAYING) p.pauseVideo(); return; }
     var browsing = km.on && km.idx !== null;
-    var want = browsing ? km.items[km.idx].start : state.pos;
-    var dur = yt.getDuration() || 0, target = dur ? want % dur : want;
-    var diff = Math.abs(yt.getCurrentTime() - target);
+    var want = (browsing ? km.items[km.idx].start : state.pos) + offset;
+    var dur = p.getDuration() || 0, target = dur ? ((want % dur) + dur) % dur : Math.max(0, want);
+    var diff = Math.abs(p.getCurrentTime() - target);
     if(dur) diff = Math.min(diff, dur - diff);   // the video loops, so 0:01 and the very end are close together
-    if(diff > SYNC_SLACK && ps !== S.BUFFERING) yt.seekTo(target, true);
-    var play = state.playing && !browsing;
-    if(play && ps !== S.PLAYING && ps !== S.BUFFERING) yt.playVideo();
-    else if(!play && ps === S.PLAYING) yt.pauseVideo();
+    if(on && diff > SYNC_SLACK && ps !== S.BUFFERING) p.seekTo(target, true);
+    var play = on && state.playing && !browsing;
+    if(play && ps !== S.PLAYING && ps !== S.BUFFERING) p.playVideo();
+    else if(!play && ps === S.PLAYING) p.pauseVideo();
   }
   // autoplay only works muted; the first key press or click turns the sound on
   function unmuteVideo(){ if(ytReady && yt.isMuted && yt.isMuted()) yt.unMute(); }
+
+  /* ---------------- Multi-View ---------------- */
+  // Camera angles, picked into screens by priority on the cards (see mvActivate). The demo has one video, so each
+  // camera is that video at its own offset (seconds) from the main stage; img = a frame captured from the video,
+  // shown on its card, and on its screen until that screen's player starts.
+  var ANGLES = [
+    { name:'Main Stage', offset:0,   img:'concert-assets/moment-080.jpg' },
+    { name:'Close-up',   offset:110, img:'concert-assets/moment-190.jpg' },
+    { name:'Wide Cam',   offset:70,  img:'concert-assets/moment-150.jpg' },
+    { name:'Dance Cam',  offset:40,  img:'concert-assets/moment-120.jpg' },
+    { name:'Solo Cam',   offset:-70, img:'concert-assets/moment-010.jpg' },
+    { name:'Center Cam', offset:-50, img:'concert-assets/moment-030.jpg' }
+  ];
+  // Screen rectangles on the 1920x1080 canvas for each layout; screen 0 is the main one (the playing video).
+  // Every layout fills the whole canvas; screens that aren't 16:9 crop their picture to fill (see fitVideo).
+  // 2 = two halves; 3 = a large screen (2/3 width) with two stacked on its right; 6 = 3 x 2.
+  var MV_GAP = 4;
+  var LAYOUTS = {
+    1: [[0,0,1920,1080]],
+    2: [[0,0,960,1080],[960,0,960,1080]],
+    3: [[0,0,1280,1080],[1280,0,640,540],[1280,540,640,540]],
+    4: [[0,0,960,540],[960,0,960,540],[0,540,960,540],[960,540,960,540]],
+    6: [[0,0,640,540],[640,0,640,540],[1280,0,640,540],[0,540,640,540],[640,540,640,540],[1280,540,640,540]]
+  };
+  // YouTube letterboxes inside its iframe, so to fill a screen that isn't 16:9 the iframe is made a 16:9 box big
+  // enough to cover the screen, centred, and the screen (overflow hidden) crops it
+  function fitVideo(w, h, wrap){
+    var f = (wrap || ytWrap).querySelector('iframe');
+    if(!f) return;
+    var s = Math.max(w / 1920, h / 1080), fw = 1920 * s, fh = 1080 * s;
+    f.style.position = 'absolute';
+    f.style.width = fw + 'px'; f.style.height = fh + 'px';
+    f.style.left = (w - fw) / 2 + 'px'; f.style.top = (h - fh) / 2 + 'px';
+  }
+  // order = the picked videos in priority order: order[0] is on screen 1 (the one with sound), order[1] on screen 2…
+  // rows: 0 = buttons + layouts, 1 = cards
+  // It holds at most as many as the layout has screens, and never fewer than one.
+  var mv = { open:false, n:1, order:[0], row:0, col:0, colByRow:[2, 0], shift:0 };
+  var mvPanel = document.getElementById('mvPanel'), mvCards = document.getElementById('mvCards');
+  var mvScreens = document.getElementById('mvScreens');
+  var mvRows = [Array.prototype.slice.call(mvPanel.querySelectorAll('.mv-btns .icon-btn, .mv-opt')), []];
+  ANGLES.forEach(function(a, i){
+    var card = document.createElement('button');
+    card.className = 'mv-card';
+    card.setAttribute('data-mv', 'angle'); card.setAttribute('data-angle', i);
+    card.setAttribute('aria-label', a.name);
+    card.innerHTML = '<img alt=""><span class="mv-badge"></span>';
+    card.firstChild.src = a.img;
+    mvCards.appendChild(card);
+    mvRows[1].push(card);
+    var screen = document.createElement('div');
+    screen.className = 'mv-screen';
+    screen.innerHTML = '<img alt=""><div class="mv-yt"><div></div></div><span>Pick a video below</span>';
+    mvScreens.appendChild(screen);
+  });
+  // Screens 2-6 each get their own muted YouTube player, made the first time the screen shows a camera
+  var screenPlayers = [];
+  function screenPlayer(i){
+    if(screenPlayers[i] || !window.YT || !YT.Player) return screenPlayers[i];
+    var wrap = mvScreens.children[i].querySelector('.mv-yt'), sp = { ready:false, wrap:wrap };
+    sp.player = new YT.Player(wrap.firstChild, {
+      videoId: YT_ID, width: 1920, height: 1080,
+      playerVars: { autoplay:0, mute:1, controls:0, disablekb:1, fs:0, rel:0, iv_load_policy:3, playsinline:1,
+                    modestbranding:1, loop:1, playlist:YT_ID, origin:location.origin },
+      events: {
+        onReady: function(){ sp.ready = true; sp.player.mute(); layoutScreens(); syncScreens(); },
+        onStateChange: function(e){ if(e.data === YT.PlayerState.PLAYING) wrap.classList.add('ready'); }
+      }
+    });
+    screenPlayers[i] = sp;
+    return sp;
+  }
+  function syncScreens(){
+    Array.prototype.forEach.call(mvScreens.children, function(el, i){
+      var a = i + 1 < mv.n ? mv.order[i + 1] : undefined;
+      var sp = a !== undefined ? screenPlayer(i) : screenPlayers[i];
+      if(sp && sp.ready) syncPlayer(sp.player, a !== undefined ? ANGLES[a].offset : 0, a !== undefined);
+    });
+  }
+  // the layout icons are inlined so the focused one can turn dark
+  mvPanel.querySelectorAll('.mv-opt > img').forEach(function(img){
+    getText(img.getAttribute('src')).then(function(t){
+      var svg = new DOMParser().parseFromString(t, 'image/svg+xml').documentElement;
+      svg.removeAttribute('style'); svg.setAttribute('aria-hidden', 'true');
+      img.replaceWith(document.importNode(svg, true));
+    }).catch(function(){});
+  });
+
+  function mvOffset(){ return ANGLES[mv.order[0]].offset; }
+  function layoutScreens(){
+    var rects = LAYOUTS[mv.n], g = mv.n > 1 ? MV_GAP/2 : 0;
+    function place(el, r){
+      el.style.left = (r[0] + g) + 'px'; el.style.top = (r[1] + g) + 'px';
+      el.style.width = (r[2] - 2*g) + 'px'; el.style.height = (r[3] - 2*g) + 'px';
+    }
+    place(ytWrap, rects[0]);
+    fitVideo(rects[0][2] - 2*g, rects[0][3] - 2*g);
+    Array.prototype.forEach.call(mvScreens.children, function(el, i){
+      var r = rects[i + 1];
+      el.style.display = r ? 'block' : 'none';
+      if(!r) return;
+      place(el, r);
+      var a = mv.order[i + 1];
+      el.classList.toggle('empty', a === undefined);
+      if(a !== undefined){
+        el.style.display = 'block'; setSrc(el.firstChild, ANGLES[a].img);
+        fitVideo(r[2] - 2*g, r[3] - 2*g, el.querySelector('.mv-yt'));
+      }
+      else el.style.display = 'flex';
+    });
+    mvRows[1].forEach(function(card){
+      var at = mv.order.indexOf(+card.getAttribute('data-angle'));
+      card.classList.toggle('picked', at >= 0);
+      card.querySelector('.mv-badge').textContent = at >= 0 ? at + 1 : '';
+      card.setAttribute('aria-label', ANGLES[+card.getAttribute('data-angle')].name + (at >= 0 ? ', screen ' + (at + 1) : ', not on screen'));
+    });
+    canvas.classList.toggle('mv-active', mv.open || mv.n > 1);
+  }
+  function renderMv(){
+    mvRows.forEach(function(items, r){
+      items.forEach(function(el, c){ el.classList.toggle('focused', mv.open && r === mv.row && c === mv.col); });
+    });
+    mvPanel.querySelectorAll('.mv-opt').forEach(function(el){ el.classList.toggle('selected', +el.getAttribute('data-n') === mv.n); });
+    // keep the focused card inside the panel, like the Key Moment rail
+    if(mv.open && mv.row === 1){
+      var card = mvRows[1][mv.col], w = mvCards.parentNode.offsetWidth;
+      var left = card.offsetLeft - mvCards.offsetLeft, right = left + card.offsetWidth;
+      if(left - mv.shift < 0) mv.shift = left;
+      else if(right - mv.shift > w) mv.shift = right - w;
+      mv.shift = Math.max(0, Math.min(mv.shift, mvCards.scrollWidth - w));
+      mvCards.style.transform = 'translateX(' + (-mv.shift) + 'px)';
+    }
+    layoutScreens();
+  }
+  function openMulti(){
+    if(km.on) exitKeyMoments();
+    mv.open = true;
+    mv.row = 0; mv.col = 2 + [1,2,3,4,6].indexOf(mv.n);   // start on the current layout
+    canvas.classList.add('mv-open');
+    renderMv();
+  }
+  function closeMulti(){
+    mv.open = false;
+    canvas.classList.remove('mv-open');
+    state.row = 0; state.col = rows[0].indexOf(document.querySelector('[data-action="multiView"]'));
+    render(); renderMv();
+  }
+  function mvActivate(){
+    var el = mvRows[mv.row][mv.col], what = el.getAttribute('data-mv');
+    if(what === 'close'){ closeMulti(); return; }
+    if(what === 'layout'){
+      // fewer screens: the lowest priorities drop off; more screens: the new ones wait for a pick
+      mv.n = +el.getAttribute('data-n');
+      mv.order = mv.order.slice(0, mv.n);
+      renderMv(); syncVideo(); return;
+    }
+    if(what === 'angle'){
+      var a = +el.getAttribute('data-angle'), at = mv.order.indexOf(a);
+      if(mv.n === 1) mv.order = [a];                    // one screen: it simply goes there
+      else if(at >= 0){
+        // numbered: take its number away and move the ones after it up (screen 1 always keeps a video)
+        if(mv.order.length > 1) mv.order.splice(at, 1);
+      }
+      else if(mv.order.length < mv.n) mv.order.push(a); // next free number
+      else mv.order[mv.n - 1] = a;                      // all screens full: it takes the last number
+      renderMv(); syncVideo();
+    }
+  }
+  function mvKey(e){
+    if(e.key === 'Escape' || e.key === 'Backspace'){ closeMulti(); return true; }
+    if(e.repeat && e.key === 'Enter') return true;
+    if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
+      mv.col = Math.max(0, Math.min(mvRows[mv.row].length - 1, mv.col + (e.key === 'ArrowRight' ? 1 : -1)));
+    } else if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){
+      var r = e.key === 'ArrowDown' ? 1 : 0;
+      if(r === mv.row) return true;
+      mv.colByRow[mv.row] = mv.col; mv.row = r; mv.col = Math.min(mv.colByRow[r], mvRows[r].length - 1);
+    } else if(e.key === 'Enter' || e.key === ' '){ mvActivate(); return true; }
+    else return false;
+    renderMv();
+    return true;
+  }
+  mvRows.forEach(function(items, r){
+    items.forEach(function(el){
+      el.addEventListener('mouseenter', function(){ mv.row = r; mv.col = items.indexOf(el); renderMv(); });
+      el.addEventListener('click', function(){ mv.row = r; mv.col = items.indexOf(el); mvActivate(); });
+    });
+  });
 
   /* ---------------- remote / keyboard ---------------- */
   var WAKE_KEYS = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' '];
   window.addEventListener('keydown', function(e){
     unmuteVideo();
+    // the Multi-View panel has its own focus; it doesn't auto-hide while open
+    if(mv.open){ wake(); if(mvKey(e)) e.preventDefault(); return; }
     if(e.key==='Escape' || e.key==='Backspace'){
       e.preventDefault();
       // Back steps out one level and hides the overlay: in Key Moment mode it first closes the rail (back to the
@@ -1111,9 +1404,9 @@
     clearTimeout(hideTimer);
     canvas.classList.add('ui-hidden');
   }
-  // the Key Moment rail stays up while it's open; the countdown starts over once it closes
+  // the Key Moment rail and the Multi-View panel stay up while open; the countdown starts over once they close
   function hideIfIdle(){
-    if(canvas.classList.contains('km-rail-open')){ hideTimer = setTimeout(hideIfIdle, HIDE_AFTER); return; }
+    if(canvas.classList.contains('km-rail-open') || canvas.classList.contains('mv-open')){ hideTimer = setTimeout(hideIfIdle, HIDE_AFTER); return; }
     canvas.classList.add('ui-hidden');
   }
   frame.addEventListener('mousemove', wake);

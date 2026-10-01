@@ -4,8 +4,9 @@
   Same design language as key-moment-navigator.html (Aurora palette, 1920x1080 canvas scaled to the window,
   focus ring + scale on the focused item). Works with mouse/touch and with a TV remote (arrow keys + Enter).
   Options: Key Moments (Key Moment Navigator), Multi-View (Multiview), Clips Reels (the Vertical Discovery Feed app at the
-  project root), Home (home.html at the project root, the Stream Home prototype) and Live Stream (live-stream.html, the
-  live-channel player from Figma). Each destination has a Back control that returns here.
+  project root), Home (home.html at the project root, the Stream Home prototype), Live Stream (live-stream.html, the
+  live-channel player from Figma) and Concert (concert-live.html, the same player set up for a live concert).
+  Each destination has a Back control that returns here.
 -->
 <html lang="en">
 <head>
@@ -57,7 +58,7 @@
   }
 
   /* ---------- Header ---------- */
-  header{ position:absolute; left:152px; right:152px; top:96px; }
+  header{ position:absolute; left:96px; right:96px; top:96px; }
   .eyebrow{
     font-size:16px; font-weight:700; letter-spacing:.24em; text-transform:uppercase;
     color:var(--aurora-green);
@@ -67,9 +68,9 @@
 
   /* ---------- Category grid ---------- */
   #grid{
-    position:absolute; left:152px; top:376px;
-    width:1616px;
-    display:grid; grid-template-columns:repeat(5, 1fr); grid-auto-rows:380px; gap:32px;
+    position:absolute; left:96px; top:376px;
+    width:1728px;
+    display:grid; grid-template-columns:repeat(6, 1fr); grid-auto-rows:380px; gap:32px;
   }
   .card{
     --accent:#00ff87;
@@ -157,15 +158,17 @@
     { id:'concert',  name:'Multi-View',  desc:'Watch several camera angles side by side', accent:'#E040FB', icon:'music', href:'multiview-prototype.html' },
     { id:'vertical', name:'Clips Reels', desc:'Swipe through short vertical clips', accent:'#FF6D00', icon:'phone', href:'../?from=picker' },
     { id:'home',     name:'Home',        desc:'Smart TV–style home with content rails', accent:'#00E5FF', icon:'home',  href:'../home.html' },
-    { id:'live',     name:'Live Stream', desc:'Watch live channels with full player controls', accent:'#FF4D6D', icon:'live',  href:'live-stream.html' }
+    { id:'live',     name:'Live Stream', desc:'Watch live channels with full player controls', accent:'#FF4D6D', icon:'live',  href:'live-stream.html' },
+    { id:'concert-live', name:'Concert', desc:'Watch a live concert with full player controls', accent:'#B388FF', icon:'mic', href:'concert-live.html' }
   ];
-  var COLS = 5;
+  var COLS = 6;
 
   var ICONS = {
     ball:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.5 2.5-1.3 4h-4.4l-1.3-4z"/><path d="M12 3v5M20.5 9.5L15.5 10.5M17.5 19l-3.3-4.5M6.5 19l3.3-4.5M3.5 9.5l5 1"/></svg>',
     music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
     home:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><path d="M10 20v-6h4v6"/></svg>',
+    mic:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21.5M8.5 21.5h7"/></svg>',
     live:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>'
   };
 
