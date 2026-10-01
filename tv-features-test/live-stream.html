@@ -4,8 +4,9 @@
   "player live tv_Stream" (PLAY-player, node 1146:37842).
   Same conventions as the other prototypes: 1920x1080 canvas scaled to the window, works with mouse/touch
   and with a TV remote (arrow keys + Enter, Esc/Backspace returns to the Content Picker).
-  Assets in live-stream-assets/ are exported from that Figma frame, except moment-*.jpg (frames captured from the video).
-  The picture is a YouTube video (YT_ID below: NBA's Suns at Nets full-game highlights) played through the YouTube
+  Assets in live-stream-assets/ are exported from that Figma frame, except football-*.jpg (frames captured from the video).
+  The picture is a YouTube video (YT_ID below: AIS PLAY's Japan vs Thailand highlights,
+  Asian Games 2026 men's football) played through the YouTube
   IFrame Player API with YouTube's own controls hidden, so this page's seek bar, skips, Key Moments and play/pause
   drive it. The video loops; the stream's position maps onto it modulo its length. It starts muted (browser autoplay
   rules) and unmutes on the first key press or click. The screen stays black until the video starts.
@@ -62,9 +63,8 @@
   /* YouTube player: fades in once the video is actually playing; it never takes the mouse (the overlay does) */
   .yt-wrap{ opacity:0; transition:opacity .6s ease; background:#000; overflow:hidden; }
   .yt-wrap.ready{ opacity:1; }
-  /* zoomed a little so YouTube's own title bar (top) and "more videos" strip (bottom), which it shows while
-     paused, fall outside the canvas; costs ~5% of the picture at each edge */
-  .yt-wrap iframe{ width:100%; height:100%; display:block; border:0; pointer-events:none; transform:scale(1.12); }
+  /* shown at its own size, uncropped (YouTube may show its title bar while paused) */
+  .yt-wrap iframe{ width:100%; height:100%; display:block; border:0; pointer-events:none; }
 
   /* ---------- Overlay ---------- */
   .scrim{
@@ -240,11 +240,15 @@
   .seek.km .km-segs, .seek.km .km-marks{ display:block; }
   .km-seg{ position:absolute; top:0; height:100%; background:#337ecf; }
   .km-mark{
-    position:absolute; top:50%; width:28px; height:28px; margin:-14px 0 0 -14px; border-radius:50%;
+    position:absolute; top:50%; width:32px; height:32px; margin:-16px 0 0 -16px; border-radius:50%;
     background:var(--on-surface); box-shadow:0 1px 4px rgba(0,0,0,.35); cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
   .km-mark svg{ width:18px; height:18px; display:block; }
+  /* event icons (see EVENT_ICONS): on the seek-bar marker, and in front of the tag on the cards */
+  .km-mark svg.ev{ width:24px; height:24px; color:#3B3C3E; }   /* whistle: dark on the white marker, light on tags */
+  .ev-tag{ display:inline-flex !important; align-items:center; gap:6px; }
+  .ev-tag svg{ width:18px; height:18px; flex:none; display:block; }
   /* card sits where the scrub preview's thumbnail does (58px above the pointer), with the time + pointer below it */
   .km-card{
     position:absolute; bottom:105px; width:320px; padding:8px; border-radius:12px; display:none;
@@ -262,6 +266,9 @@
      #E8E8E8 circle, dark icon, no ring) and pressing it again leaves the mode. Focused, it shows "Focus Active". */
   #canvas.km .icon-btn.key:not(.focused) .btn-bg{ fill:var(--on-surface); opacity:1; }
   #canvas.km .icon-btn.key .btn-glyph{ opacity:1; }
+  /* in Key Moment mode, Start Over is swapped for Back */
+  .icon-btn.km-back, #canvas.km .icon-btn[data-action="startOver"]{ display:none; }
+  #canvas.km .icon-btn.km-back{ display:inline-block; }
   #canvas.km .icon-btn.key .btn-glyph path{ fill:#3B3C3E; }
   #canvas.km .chip:not(.km-hint){ display:none; }
   #canvas.km .chip.km-hint{ display:flex; }
@@ -341,14 +348,14 @@
 
     <div class="ui" id="ui">
       <header class="channel">
-        <div class="avatar"><img src="https://tr.play-rfcdn.ais.th/iptvepg/layout/epg/poster/202606/2606302071773724864557057.png" alt="PLAY Sports 55"
-          onerror="this.onerror=null; this.src='live-stream-assets/channel-logo.png'"></div>
+        <!-- Asian Games 2026 logo: a round badge on white (transparent outside the circle) -->
+        <div class="avatar" style="background:#fff"><img src="live-stream-assets/channel-asian-games.png" alt="Asian Games 2026"></div>
         <div class="channel-text">
-          <h1 class="channel-title">Brooklyn Nets vs Phoenix Suns</h1>
+          <h1 class="channel-title">Japan vs Thailand</h1>
           <div class="channel-meta">
-            <span>Play Sport 55</span>
+            <span>Asian Games 2026</span>
             <span class="crown"><span><img src="live-stream-assets/crown.svg" alt="Premium"></span></span>
-            <span class="countdown" aria-label="Channel number">555</span>
+            <span class="countdown" aria-label="Channel number">902</span>
             <img class="sep" src="live-stream-assets/dot-separator.svg" alt="">
             <span>20:00 - 22:00</span>
           </div>
@@ -358,6 +365,10 @@
       <section class="controls">
         <div class="row buttons">
           <div class="group">
+            <!-- Key Moment mode: Back takes Start Over's place and leaves the mode -->
+            <button class="icon-btn km-back" data-row="0" data-action="kmBack" data-label="Back" aria-label="Back">
+              <img src="live-stream-assets/btn-back.svg" alt="">
+            </button>
             <button class="icon-btn" data-row="0" data-action="startOver" data-label="Start Over" aria-label="Start over">
               <img src="live-stream-assets/btn-start-over.svg" alt="">
             </button>
@@ -392,13 +403,13 @@
               <i class="preview-arrow"></i>
             </div>
             <div class="km-card" id="kmCard" aria-live="polite">
-              <img id="kmImg" src="live-stream-assets/moment-045.jpg" alt="">
+              <img id="kmImg" src="live-stream-assets/football-030.jpg" alt="">
               <div class="km-title" id="kmTitle"></div>
               <span class="km-tag" id="kmTag"></span>
             </div>
             <div class="handle" id="handle"><img src="live-stream-assets/seek-handle.svg" alt=""></div>
             <div class="preview" id="preview" aria-hidden="true">
-              <div class="preview-thumb" id="previewThumb"><img src="live-stream-assets/moment-045.jpg" alt=""></div>
+              <div class="preview-thumb" id="previewThumb"><img src="live-stream-assets/football-030.jpg" alt=""></div>
               <div class="preview-time" id="previewTime">00:00</div>
               <i class="preview-arrow"></i>
             </div>
@@ -464,13 +475,16 @@
   /* ---------------- focus model ---------------- */
   // Row 0: icon buttons, row 1: seek bar, row 2: text chips. Starts on the seek bar.
   var allRow0 = Array.prototype.slice.call(document.querySelectorAll('[data-row="0"]'));
+  // row 0 swaps Start Over for Back in Key Moment mode (see enter/exitKeyMoments)
+  var normalRow0 = allRow0.filter(function(el){ return !el.classList.contains('km-back'); });
+  var kmRow0 = allRow0.filter(function(el){ return el.getAttribute('data-action') !== 'startOver'; });
   // Row 2 swaps the same way: the two chips normally, "Select Key Moment" in Key Moment mode
   var allRow2 = Array.prototype.slice.call(document.querySelectorAll('[data-row="2"]'));
   var normalRow2 = allRow2.filter(function(el){ return !el.classList.contains('km-hint'); });
   var kmRow2 = allRow2.filter(function(el){ return el.classList.contains('km-hint'); });
   // Row 3: the Key Moment rail's cards (only in Key Moment mode; empty otherwise)
   var rows = [
-    allRow0,
+    normalRow0,
     [document.getElementById('seek')],
     normalRow2,
     []
@@ -486,7 +500,7 @@
   // FAST_SPEED = seconds of video moved per second the key is held (fast rewind / forward)
   var SKIP_SECONDS = 10, FAST_SPEED = 10, HOLD_MS = 400, SCRUB_LINGER_MS = 1000;
   // the stream opens one video length in (VIDEO_LEN, see YouTube video below), so the moments are behind live
-  var VIDEO_LEN = 969;
+  var VIDEO_LEN = 381;
   var state = { row:1, col:0, live:VIDEO_LEN, pos:VIDEO_LEN, playing:true };
 
   function pad(n){ return (n<10 ? '0' : '') + n; }
@@ -671,12 +685,36 @@
   // to the stream length at that moment (km.span), so checkpoints keep both their time and their spot on the bar.
   // The bar's right end still stands for live: watching live keeps it full while the time carries on counting.
   var KEY_MOMENTS = [
-    { start:45,  end:110, title:'Opening tip-off', tag:'Q1',    img:'live-stream-assets/moment-045.jpg' },
-    { start:315, end:390, title:'Second quarter',  tag:'Q2',    img:'live-stream-assets/moment-315.jpg' },
-    { start:615, end:700, title:'Third quarter',   tag:'Q3',    img:'live-stream-assets/moment-615.jpg' },
-    { start:795, end:850, title:'Fourth quarter',  tag:'Q4',    img:'live-stream-assets/moment-795.jpg' },
-    { start:855, end:880, title:'Final buzzer',    tag:'Final', img:'live-stream-assets/moment-855.jpg' }
+    { start:22,  end:40,  type:'kickoff', title:'Kick-off',              tag:'Kick-off', img:'live-stream-assets/football-024.jpg' },
+    { start:106, end:118, type:'goal',    title:'Goal! Japan 1-0 (30\')', tag:'Goal',     img:'live-stream-assets/football-109.jpg' },
+    { start:178, end:186, type:'kickoff', title:'Second-half kick-off',  tag:'Kick-off', img:'live-stream-assets/football-180.jpg' },
+    { start:187, end:200, type:'goal',    title:'Goal! Japan 2-0 (46\')', tag:'Goal',     img:'live-stream-assets/football-190.jpg' },
+    { start:247, end:262, type:'goal',    title:'Goal! Japan 3-0 (49\')', tag:'Goal',     img:'live-stream-assets/football-255.jpg' }
   ];
+  // Match events found by scanning the video: kick-offs from the centre-circle restarts, goals from the score bar
+  // (1-0 at 30:10, 2-0 at 46:06, 3-0 at 49:53). The broadcast's stats show no cards, so none are listed; the
+  // card types are ready for a match that has them.
+  // Icons per event type, drawn in a 24px box: goal = football, kickoff = whistle, yellow / red = card,
+  // yellowred = second yellow (yellow card behind a red one).
+  var EVENT_ICONS = {
+    goal: '<circle cx="12" cy="12" r="9.5" fill="#fff" stroke="#3B3C3E" stroke-width="1.6"/>' +
+          '<path d="M12.00 8.40L15.42 10.89L14.12 14.91L9.88 14.91L8.58 10.89zM8.18 3.41L12.00 5.30L15.82 3.41A9.4 9.4 0 0 0 8.18 3.41zM18.99 5.71L18.37 9.93L21.35 12.98A9.4 9.4 0 0 0 18.99 5.71zM20.14 16.70L15.94 17.42L13.95 21.19A9.4 9.4 0 0 0 20.14 16.70zM10.05 21.19L8.06 17.42L3.86 16.70A9.4 9.4 0 0 0 10.05 21.19zM2.65 12.98L5.63 9.93L5.01 5.71A9.4 9.4 0 0 0 2.65 12.98z" fill="#3B3C3E"/>' +
+          '<path d="M12.00 8.40L12.00 5.30M15.42 10.89L18.37 9.93M14.12 14.91L15.94 17.42M9.88 14.91L8.06 17.42M8.58 10.89L5.63 9.93" stroke="#3B3C3E" stroke-width="1.3"/>',
+    kickoff: '<path fill-rule="evenodd" fill="currentColor" d="M3 11.5a5.5 5.5 0 0 0 10.6 2.1H21v-4.2h-9.3A5.5 5.5 0 0 0 3 11.5z' +
+             'M8.5 9.4a2.1 2.1 0 1 0 0 4.2a2.1 2.1 0 1 0 0-4.2z"/>' +
+             '<path d="M15 9.4V6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    yellow: '<rect x="6.5" y="3.5" width="11" height="16" rx="2" fill="#F7C531" stroke="#3B3C3E" stroke-width=".8" transform="rotate(10 12 11.5)"/>',
+    red: '<rect x="6.5" y="3.5" width="11" height="16" rx="2" fill="#E5383B" stroke="#3B3C3E" stroke-width=".8" transform="rotate(10 12 11.5)"/>',
+    yellowred: '<rect x="3.5" y="3" width="10" height="14.5" rx="1.8" fill="#F7C531" stroke="#3B3C3E" stroke-width=".8" transform="rotate(-10 8.5 10)"/>' +
+               '<rect x="10" y="6" width="10" height="14.5" rx="1.8" fill="#E5383B" stroke="#3B3C3E" stroke-width=".8" transform="rotate(10 15 13)"/>'
+  };
+  function eventIcon(type){ return '<svg class="ev" viewBox="0 0 24 24" fill="none" aria-hidden="true">' + (EVENT_ICONS[type] || '') + '</svg>'; }
+  // a tag chip: the event's icon, then its label
+  function setTag(el, item){
+    el.classList.add('ev-tag');
+    el.innerHTML = eventIcon(item.type) + '<span></span>';
+    el.lastChild.textContent = item.tag;
+  }
   var km = { on:false, idx:null, items:[], span:0 };
   var kmSegs = document.getElementById('kmSegs'), kmMarks = document.getElementById('kmMarks');
   var kmCard = document.getElementById('kmCard');
@@ -690,21 +728,24 @@
     km.on = true; km.idx = null;
     km.span = Math.max(1, state.live);
     km.items = KEY_MOMENTS.map(function(h){
-      return { start:h.start, end:h.end, title:h.title, tag:h.tag, img:h.img };
+      return { start:h.start, end:h.end, type:h.type, title:h.title, tag:h.tag, img:h.img };
     });
     kmSegs.innerHTML = ''; kmMarks.innerHTML = '';
     km.items.forEach(function(item, i){
       var seg = document.createElement('div'); seg.className = 'km-seg';
       kmSegs.appendChild(seg); item.seg = seg;
       var mark = document.createElement('div'); mark.className = 'km-mark'; mark.setAttribute('data-km', i);
-      // sparkle glyph sits at 43.5,43.5 in its 87px source box; crop to the icon's own ~40px area
-      mark.innerHTML = SPARKLE ? '<svg viewBox="23.5 23.5 40 40" aria-hidden="true"><path fill="#3B3C3E" d="' + SPARKLE + '"/></svg>' : '';
+      // the event's icon; the sparkle (from the Key Moment button) for a moment without a type
+      mark.innerHTML = item.type ? eventIcon(item.type)
+        : SPARKLE ? '<svg viewBox="23.5 23.5 40 40" aria-hidden="true"><path fill="#3B3C3E" d="' + SPARKLE + '"/></svg>' : '';
+      mark.setAttribute('title', item.title);
       kmMarks.appendChild(mark); item.mark = mark;
     });
     buildRail();
     canvas.classList.add('km');
     rows[2] = kmRow2; colByRow[2] = 0;
     rows[3] = km.items.map(function(item){ return item.card; }); colByRow[3] = 0;
+    rows[0] = kmRow0;
     if(state.row === 0) colByRow[0] = state.col;   // so ↑ comes back to View Key Moment
     state.row = 1; state.col = 0;   // keep watching live on the seek bar
     render();
@@ -713,6 +754,7 @@
     if(km.idx !== null) state.playing = true;   // leaving mid-browse: carry on playing where the stream was
     km.on = false; km.idx = null;
     canvas.classList.remove('km');
+    rows[0] = normalRow0;
     colByRow[0] = 1;   // coming back up lands on "View Key Moment"
     rows[2] = normalRow2; colByRow[2] = 0;
     rows[3] = []; colByRow[3] = 0;
@@ -780,7 +822,7 @@
   //  - at each checkpoint, the bar before it stops MARK_CLEAR px short of the marker's edge, so the marker sits in
   //    its own gap (the highlight starts under the marker and shows from its right edge on)
   //  - at the end of each highlight, a GAP px gap (as in Figma's segmented seek bar)
-  var barEl = document.getElementById('bar'), GAP = 4, MARK_R = 14, MARK_CLEAR = 6, barMaskKey = '';
+  var barEl = document.getElementById('bar'), GAP = 4, MARK_R = 16, MARK_CLEAR = 6, barMaskKey = '';
   // seconds the whole bar represents: frozen while in Key Moment mode, otherwise the stream so far
   function barSpan(){ return km.on ? km.span : state.live; }
   function barFrac(sec){ return barSpan() ? Math.min(1, sec/barSpan()) : 0; }
@@ -822,7 +864,7 @@
     var item = km.items[km.idx];
     document.getElementById('kmTitle').textContent = item.title;
     setSrc(document.getElementById('kmImg'), item.img);
-    document.getElementById('kmTag').textContent = item.tag;
+    setTag(document.getElementById('kmTag'), item);
     // time + pointer sit right over the checkpoint; the card above them is kept inside the track
     var trackW = trackEl.offsetWidth, x = barFrac(item.start)*trackW;
     document.getElementById('kmPointer').style.left = x + 'px';
@@ -853,7 +895,7 @@
         '</div>';
       card.querySelector('.km-moment-thumb img').src = item.img;
       card.querySelector('.km-moment-title').textContent = item.title;
-      card.querySelector('.km-moment-tag').textContent = item.tag;
+      setTag(card.querySelector('.km-moment-tag'), item);
       card.querySelector('.km-moment-time').textContent = elapsed(Math.floor(item.start));
       card.setAttribute('aria-label', item.title + ', ' + item.tag + ', ' + elapsed(Math.floor(item.start)));
       bindPointer(card, 3);
@@ -952,6 +994,8 @@
     if(state.row === 1){ togglePlay(); return; }
     // View Key Moment toggles the mode
     if(action === 'keyMoments'){ if(km.on) exitKeyMoments(); else enterKeyMoments(); return; }
+    // Back (Key Moment mode): leave the mode, focus stays on the first button (Start Over again)
+    if(action === 'kmBack'){ exitKeyMoments(); state.row = 0; state.col = 0; render(); return; }
     // Select Key Moment: step down into the rail of moment cards
     if(action === 'kmSelect'){ move(1, 0); return; }
     // a moment card: play from that moment, back on the seek bar (which closes the rail)
@@ -985,19 +1029,21 @@
   // The page's own clock (state.pos / state.playing) stays in charge; syncVideo() makes the YouTube player follow
   // it: play/pause, and a seek whenever the picture is more than SYNC_SLACK seconds off (seeks, skips, Key Moments,
   // or drift from buffering). While a checkpoint is selected the picture shows that moment.
-  var YT_ID = '-HgamMayc20', SYNC_SLACK = 2;
+  var YT_ID = '6BK36X0wQZQ', SYNC_SLACK = 2;
   var yt = null, ytReady = false, ytWrap = document.getElementById('ytWrap');
   window.onYouTubeIframeAPIReady = function(){
     yt = new YT.Player('ytPlayer', {
       videoId: YT_ID, width: 1920, height: 1080,
       playerVars: { autoplay:1, mute:1, controls:0, disablekb:1, fs:0, rel:0, iv_load_policy:3, playsinline:1,
-                    modestbranding:1, loop:1, playlist:YT_ID, origin:location.origin },
+                    modestbranding:1, loop:1, playlist:YT_ID, origin:location.origin, cc_load_policy:0 },
       events: {
-        onReady: function(){ ytReady = true; syncVideo(); },
-        onStateChange: function(e){ if(e.data === YT.PlayerState.PLAYING) ytWrap.classList.add('ready'); }
+        onReady: function(){ ytReady = true; noCaptions(yt); syncVideo(); },
+        onStateChange: function(e){ if(e.data === YT.PlayerState.PLAYING){ ytWrap.classList.add('ready'); noCaptions(yt); } }
       }
     });
   };
+  // YouTube switches on captions by itself (e.g. auto-generated Thai ones); the player shows the video only
+  function noCaptions(p){ try{ p.unloadModule('captions'); p.unloadModule('cc'); }catch(e){} }
   var ytScript = document.createElement('script');
   ytScript.src = 'https://www.youtube.com/iframe_api';
   document.head.appendChild(ytScript);
@@ -1111,9 +1157,9 @@
     clearTimeout(hideTimer);
     canvas.classList.add('ui-hidden');
   }
-  // the Key Moment rail stays up while it's open; the countdown starts over once it closes
   function hideIfIdle(){
-    if(canvas.classList.contains('km-rail-open')){ hideTimer = setTimeout(hideIfIdle, HIDE_AFTER); return; }
+    // the overlay holds while Key Moment mode is on (like the Multi-View panel); the countdown starts over once it ends
+    if(km.on){ hideTimer = setTimeout(hideIfIdle, HIDE_AFTER); return; }
     canvas.classList.add('ui-hidden');
   }
   frame.addEventListener('mousemove', wake);
