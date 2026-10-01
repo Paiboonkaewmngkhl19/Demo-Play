@@ -255,17 +255,57 @@
   #canvas.km .chip:not(.km-hint){ display:none; }
   #canvas.km .chip.km-hint{ display:flex; }
 
+  /* Key Moment rail (Figma "View Highlight", PLAY-player node 1146:24523): focusing "Select Key Moment" slides a row
+     of moment cards up from the bottom under the chip; the icon buttons, seek bar and badges step aside meanwhile.
+     Each card shows the same details as the checkpoint card: thumbnail, title, tag and the moment's time. */
+  .km-rail{ display:none; width:100%; overflow:visible; }
+  .km-rail-track{ display:flex; gap:24px; align-items:flex-start; transition:transform .3s ease; }
+  #canvas.km-rail-open .km-rail{ display:block; animation:kmRailIn .35s ease-out; }
+  #canvas.km-rail-open .row.buttons,
+  #canvas.km-rail-open .seek,
+  #canvas.km-rail-open .row.chips > .group:last-child{ display:none; }
+  #canvas.km-rail-open .row.chips{ animation:kmChipUp .35s ease-out; }
+  /* once selected (focus has moved down into the cards), the unfocused chip is underlined; otherwise no underline */
+  #canvas.km-rail-open .chip.km-hint:not(.focused){ text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:8px; }
+  /* the chip starts where it sat before (one rail height lower) and rides up with the rail */
+  @keyframes kmRailIn{ from{ transform:translateY(100%); opacity:0; } to{ transform:none; opacity:1; } }
+  @keyframes kmChipUp{ from{ transform:translateY(316px); } to{ transform:none; } }
+  .km-moment{
+    position:relative; flex:none; display:flex; flex-direction:column; gap:16px; align-items:flex-start;
+    padding:16px; border-radius:24px; background:#2a2a2a; text-align:left;
+  }
+  /* focus ring, drawn outside the card like the icon buttons' ring */
+  .km-moment::after{
+    content:''; position:absolute; inset:-6px; border-radius:30px;
+    border:4px solid var(--on-surface); opacity:0; transition:opacity .15s ease; pointer-events:none;
+  }
+  .km-moment.focused::after{ opacity:1; }
+  .km-moment-thumb{ width:320px; height:180px; border-radius:16px; overflow:hidden; background:var(--surface-container-high); }
+  .km-moment-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .km-moment-info{ display:flex; flex-direction:column; gap:8px; width:100%; }
+  .km-moment-title{
+    max-width:320px; font-size:20px; line-height:1.5; font-weight:500; letter-spacing:-0.38px; color:var(--on-surface);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .km-moment-meta{ display:flex; gap:12px; align-items:center; }
+  .km-moment-tag{
+    padding:8px 12px; border-radius:8px; background:var(--chip-countdown); backdrop-filter:blur(2px);
+    font-size:16px; line-height:normal; font-weight:500; color:var(--focus); white-space:nowrap;
+  }
+  .km-moment-time{ font-size:16px; line-height:1.2; font-weight:500; letter-spacing:-0.304px; color:#d9d9d9; white-space:nowrap; font-variant-numeric:tabular-nums; }
+
   /* ---------- Auto-hide ("wake") ----------
      After 3s without input the header fades up and the controls fade down; the LIVE tag stays.
      `translate` is used (not `transform`) so it stacks with the --ui scale on .channel/.controls. */
-  .scrim, .channel, .row.buttons, .seek, .controls > .row:last-child > .group:first-child, .badge.viewers{
+  .scrim, .channel, .row.buttons, .seek, .row.chips > .group:first-child, .km-rail, .badge.viewers{
     transition:opacity .45s ease, translate .45s ease;
   }
   #canvas.ui-hidden .scrim{ opacity:0; }
   #canvas.ui-hidden .channel{ opacity:0; translate:0 -40px; pointer-events:none; }
   #canvas.ui-hidden .row.buttons,
   #canvas.ui-hidden .seek,
-  #canvas.ui-hidden .controls > .row:last-child > .group:first-child,
+  #canvas.ui-hidden .row.chips > .group:first-child,
+  #canvas.ui-hidden .km-rail,
   #canvas.ui-hidden .badge.viewers{ opacity:0; translate:0 40px; pointer-events:none; }
 
   /* Toast */
@@ -362,7 +402,7 @@
           </div>
         </div>
 
-        <div class="row">
+        <div class="row chips">
           <div class="group">
             <button class="chip" data-row="2" data-action="browse">Browse Channels</button>
             <button class="chip" data-row="2" data-action="guide">Open Program Guide</button>
@@ -373,6 +413,9 @@
             <div class="badge live"><span class="dot"></span><span>LIVE</span></div>
           </div>
         </div>
+
+        <!-- Key Moment mode only: one card per moment, filled in by enterKeyMoments() -->
+        <div class="km-rail" id="kmRail"><div class="km-rail-track" id="kmRailTrack"></div></div>
       </section>
     </div>
 
@@ -425,13 +468,15 @@
   var allRow2 = Array.prototype.slice.call(document.querySelectorAll('[data-row="2"]'));
   var normalRow2 = allRow2.filter(function(el){ return !el.classList.contains('km-hint'); });
   var kmRow2 = allRow2.filter(function(el){ return el.classList.contains('km-hint'); });
+  // Row 3: the Key Moment rail's cards (only in Key Moment mode; empty otherwise)
   var rows = [
     normalRow0,
     [document.getElementById('seek')],
-    normalRow2
+    normalRow2,
+    []
   ];
   // the first time ↑ is pressed it lands on Start Over (col 0); after that each row remembers its last focus
-  var colByRow = [0, 0, 0];
+  var colByRow = [0, 0, 0, 0];
 
   /* ---------------- live playback clock ---------------- */
   // The bar spans the start of the live stream (left) to the live edge (right). live = seconds the stream has been
@@ -465,6 +510,8 @@
   function render(){
     // clear whichever set of row-0 / row-2 items is switched off
     allRow0.concat(allRow2).forEach(function(el){ el.classList.remove('focused'); });
+    // the rail is up while focus is on "Select Key Moment" or on one of its cards
+    canvas.classList.toggle('km-rail-open', km.on && state.row >= 2);
     rows.forEach(function(items, r){
       items.forEach(function(el, c){ el.classList.toggle('focused', r===state.row && c===state.col); });
     });
@@ -479,6 +526,7 @@
     timeStart.textContent = elapsed(Math.floor(shownPos));
     renderScrub(frac);
     renderKeyMoments();
+    renderRail();
     liveBadge.classList.toggle('behind', state.pos < state.live);
     // Start Over switches to Watch Live after it's used, and back once playback is at the live edge again
     if(state.startedOver && state.pos >= state.live) state.startedOver = false;
@@ -640,9 +688,11 @@
       mark.innerHTML = SPARKLE ? '<svg viewBox="23.5 23.5 40 40" aria-hidden="true"><path fill="#3B3C3E" d="' + SPARKLE + '"/></svg>' : '';
       kmMarks.appendChild(mark); item.mark = mark;
     });
+    buildRail();
     canvas.classList.add('km');
     rows[0] = kmRow0; colByRow[0] = 0;
     rows[2] = kmRow2; colByRow[2] = 0;
+    rows[3] = km.items.map(function(item){ return item.card; }); colByRow[3] = 0;
     state.row = 1; state.col = 0;   // keep watching live on the seek bar
     render();
   }
@@ -652,6 +702,8 @@
     canvas.classList.remove('km');
     rows[0] = normalRow0; colByRow[0] = 1;   // coming back up lands on "View Key Moment"
     rows[2] = normalRow2; colByRow[2] = 0;
+    rows[3] = []; colByRow[3] = 0;
+    if(state.row === 3) state.row = 2;
     if(state.row === 0) state.col = 1;
     if(state.row === 2) state.col = 0;
     render();
@@ -764,10 +816,53 @@
     kmCard.style.left = Math.max(0, Math.min(trackW - kmCard.offsetWidth, x - kmCard.offsetWidth/2)) + 'px';
   }
 
+  // Key Moment rail: one card per moment with the checkpoint card's details (thumbnail, title, tag, time)
+  var railEl = document.getElementById('kmRail'), railTrack = document.getElementById('kmRailTrack');
+  function buildRail(){
+    railTrack.innerHTML = '';
+    railTrack.style.transform = '';
+    km.items.forEach(function(item, i){
+      var card = document.createElement('button');
+      card.className = 'km-moment';
+      card.setAttribute('data-row', '3');
+      card.setAttribute('data-action', 'kmMoment');
+      card.setAttribute('data-km', i);
+      card.innerHTML =
+        '<div class="km-moment-thumb"><img src="live-stream-assets/background.png" alt=""></div>' +
+        '<div class="km-moment-info">' +
+          '<div class="km-moment-title"></div>' +
+          '<div class="km-moment-meta">' +
+            '<span class="km-moment-tag"></span>' +
+            '<img class="sep" src="live-stream-assets/dot-separator.svg" alt="">' +
+            '<span class="km-moment-time"></span>' +
+          '</div>' +
+        '</div>';
+      card.querySelector('.km-moment-title').textContent = item.title;
+      card.querySelector('.km-moment-tag').textContent = item.tag;
+      card.querySelector('.km-moment-time').textContent = elapsed(Math.floor(item.start));
+      card.setAttribute('aria-label', item.title + ', ' + item.tag + ', ' + elapsed(Math.floor(item.start)));
+      bindPointer(card, 3);
+      railTrack.appendChild(card);
+      item.card = card;
+    });
+  }
+  // keep the focused card inside the rail: slide the row left/right only as far as needed
+  var railShift = 0;
+  function renderRail(){
+    if(!km.on || state.row !== 3) return;
+    var card = rows[3][state.col];
+    if(!card) return;
+    var railW = railEl.offsetWidth, left = card.offsetLeft, right = left + card.offsetWidth;
+    if(left - railShift < 0) railShift = left;
+    else if(right - railShift > railW) railShift = right - railW;
+    railShift = Math.max(0, Math.min(railShift, railTrack.scrollWidth - railW));
+    railTrack.style.transform = 'translateX(' + (-railShift) + 'px)';
+  }
+
   function move(dRow, dCol){
     if(dRow){
       var r = Math.max(0, Math.min(rows.length-1, state.row + dRow));
-      if(r === state.row) return;
+      if(r === state.row || !rows[r].length) return;
       colByRow[state.row] = state.col;
       state.row = r;
       state.col = Math.min(colByRow[r], rows[r].length-1);
@@ -843,8 +938,16 @@
     if(action === 'keyMoments'){ enterKeyMoments(); return; }
     if(action === 'kmBack'){ exitKeyMoments(); state.row = 0; state.col = 1; render(); return; }
     if(action === 'kmLive'){ kmWatchLive(); return; }
-    // Select Key Moment: go to the seek bar with the nearest checkpoint selected (same as <- there)
-    if(action === 'kmSelect'){ state.row = 1; state.col = 0; km.idx = null; kmStep(-1); return; }
+    // Select Key Moment: step down into the rail of moment cards
+    if(action === 'kmSelect'){ move(1, 0); return; }
+    // a moment card: play from that moment, back on the seek bar (which closes the rail)
+    if(action === 'kmMoment'){
+      jumpToMoment(+el.getAttribute('data-km'));
+      colByRow[3] = state.col;
+      state.row = 1; state.col = 0;
+      render();
+      return;
+    }
     if(action === 'favorite'){ favorite = !favorite; toast(favorite ? 'Added to Favorites' : 'Removed from Favorites'); return; }
     if(action === 'startOver'){
       if(state.startedOver){ seekTo(state.live); state.startedOver = false; }   // Watch Live: back to the live edge
@@ -869,7 +972,9 @@
   window.addEventListener('keydown', function(e){
     if(e.key==='Escape' || e.key==='Backspace'){
       e.preventDefault();
-      if(km.on){ wake(); exitKeyMoments(); return; }   // first Back leaves Key Moment mode
+      // in Key Moment mode, Back first closes the rail (back to the seek bar), then leaves the mode
+      if(km.on && state.row >= 2){ wake(); colByRow[state.row] = state.col; state.row = 1; state.col = 0; render(); return; }
+      if(km.on){ wake(); exitKeyMoments(); return; }
       goBackToPicker(); return;
     }
     // while the UI is hidden, a direction key or Enter only wakes it (so nothing changes unseen)
@@ -898,12 +1003,13 @@
 
   /* ---------------- mouse / touch ---------------- */
   // row 0's contents change with Key Moment mode, so each button looks up its column when used
+  function bindPointer(el, r){
+    function focusIt(){ var c = rows[r].indexOf(el); if(c < 0) return false; state.row = r; state.col = c; render(); return true; }
+    el.addEventListener('mouseenter', focusIt);
+    if(r !== 1) el.addEventListener('click', function(){ if(focusIt()) activate(); });
+  }
   [allRow0, rows[1], allRow2].forEach(function(items, r){
-    items.forEach(function(el){
-      function focusIt(){ var c = rows[r].indexOf(el); if(c < 0) return false; state.row = r; state.col = c; render(); return true; }
-      el.addEventListener('mouseenter', focusIt);
-      if(r !== 1) el.addEventListener('click', function(){ if(focusIt()) activate(); });
-    });
+    items.forEach(function(el){ bindPointer(el, r); });
   });
   // clicking the handle plays/pauses; clicking anywhere else on the track seeks there
   document.getElementById('track').addEventListener('click', function(e){
@@ -942,7 +1048,12 @@
   function wake(){
     canvas.classList.remove('ui-hidden');
     clearTimeout(hideTimer);
-    hideTimer = setTimeout(function(){ canvas.classList.add('ui-hidden'); }, HIDE_AFTER);
+    hideTimer = setTimeout(hideIfIdle, HIDE_AFTER);
+  }
+  // the Key Moment rail stays up while it's open; the countdown starts over once it closes
+  function hideIfIdle(){
+    if(canvas.classList.contains('km-rail-open')){ hideTimer = setTimeout(hideIfIdle, HIDE_AFTER); return; }
+    canvas.classList.add('ui-hidden');
   }
   frame.addEventListener('mousemove', wake);
   frame.addEventListener('click', wake);
