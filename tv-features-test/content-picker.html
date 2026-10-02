@@ -109,10 +109,10 @@
   }
   .card .poster img{ width:100%; height:100%; object-fit:cover; object-position:top; display:block; transform-origin:top center; }
   .card.has-poster::before{ display:none; }
-  /* same focus treatment as the other TV prototypes */
+  /* focus: a white ring standing a little off the card (the gap shows the page behind), slightly enlarged */
   .focused{
     transform:scale(1.06);
-    box-shadow:0 0 0 4px var(--focus-ring);
+    outline:4px solid #fff; outline-offset:8px;
     z-index:5;
   }
 
