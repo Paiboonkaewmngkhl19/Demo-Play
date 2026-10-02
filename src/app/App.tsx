@@ -76,6 +76,7 @@ interface FeedItem {
 const BASE = import.meta.env.BASE_URL;
 const FOOTBALL = `${BASE}tv-features-test/Video/Football.mp4`;
 const CONCERT = `${BASE}tv-features-test/Video/Concert.mp4`;
+const ALL_STAR = `${BASE}tv-features-test/Video/All%20star.mp4`;
 const ASIAN_GAMES: Publisher = { kind: "channel", name: "Asian Games 2026", logo: `${BASE}tv-features-test/live-stream-assets/channel-asian-games.png` };
 const COOL_CHANNEL: Publisher = { kind: "channel", name: "Cool Channel", logo: `${BASE}tv-features-test/concert-assets/channel-cool.png` };
 const frame = (path: string) => `${BASE}tv-features-test/${path}`;
@@ -242,6 +243,7 @@ const FEED: FeedItem[] = [
   {
     id: 8,
     publisher: { kind: "ott", name: "Netflix", brand: "netflix" },
+    video: ALL_STAR, start: 0, length: 21,
     title: "Love Island All Stars",
     summary: "Old flames return to the villa.",
     ageRating: "16+", quality: "HD", ctaIcon: "play",
@@ -250,7 +252,7 @@ const FEED: FeedItem[] = [
     duration: "50m · Episode 8", rating: "16+",
     synopsis: "Fan-favorites return to the villa for a second shot at love. With new connections forming and old flames rekindling, this is set to be the most dramatic series yet.",
     cast: ["Maya Jama", "Toby Aromolaran", "Ekin-Su Cülcüloğlu", "Wes Nelson"],
-    img: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=420&h=844&fit=crop&auto=format",
+    img: frame("shorts-assets/love-island.jpg"),
     cta: "Watch Now", live: false, accent: "#E50914",
     related: [
       { title: "Too Hot to Handle S5", img: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=120&h=180&fit=crop&auto=format" },
@@ -502,8 +504,9 @@ export default function App() {
                           onShare={() => setShareOpen(true)}
                           onProfile={() => toast(`${f.publisher.name} (demo)`)}
                           onCta={() => {
-                            // Upcoming: the CTA sets (or clears) a reminder; anything else opens the details page
-                            if (!f.upcoming) { goTo({ sheetOpen: true }); return; }
+                            // Upcoming: the CTA sets (or clears) a reminder; anything else would open the details page,
+                            // which isn't part of this demo
+                            if (!f.upcoming) { toast(`${f.cta} (demo)`); return; }
                             setReminded(s => toggleSet(s, f.id));
                             toast(reminded.has(f.id) ? "Reminder removed" : `We'll remind you before it starts`);
                           }}
@@ -856,7 +859,7 @@ function FeedCard({
   return (
     <div
       ref={cardRef}
-      className="relative w-full h-full bg-black overflow-hidden select-none"
+      className="relative w-full h-full bg-black overflow-hidden select-none [&_button:focus:not(:focus-visible)]:outline-none"
       style={{ fontFamily: "'Roboto', 'Inter', sans-serif" }}
       onPointerDown={onPressStart}
       onPointerMove={onPressMove}
@@ -1095,46 +1098,57 @@ function FeedCard({
   );
 }
 
-// The subtitle: at most 2 lines. When the text runs longer, "Read more" sits at the end of line 2 and opens the
-// whole description in place (scrolling if it's very long); "Show less" folds it back.
+// The subtitle: at most 2 lines. When the text runs longer it's cut so that "… Read more" fits at the end of line 2,
+// as plain inline text (no box over the picture); tapping it opens the whole description in place (scrolling if
+// it's very long), and "Show less" folds it back.
 function Summary({ text, active }: { text: string; active: boolean }) {
-  const ref = useRef<HTMLParagraphElement>(null);
+  const measure = useRef<HTMLParagraphElement>(null);
   const [open, setOpen] = useState(false);
-  const [overflows, setOverflows] = useState(false);
+  const [cut, setCut] = useState<number | null>(null);   // characters shown before "… Read more"; null = all fits
   useEffect(() => {
-    const el = ref.current;
-    if (!el || open) return;
-    const check = () => setOverflows(el.scrollHeight > el.clientHeight + 1);
-    check();
-    const ro = new ResizeObserver(check);
+    const el = measure.current;
+    if (!el) return;
+    const fit = () => {
+      const line = parseFloat(getComputedStyle(el).lineHeight) || 18;
+      const fits = (t: string) => { el.textContent = t; return el.scrollHeight <= line * 2 + 1; };
+      if (fits(text)) { setCut(null); return; }
+      // longest start of the text that still leaves room for "… Read more", ending on a whole word
+      let lo = 0, hi = text.length;
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        if (fits(text.slice(0, mid).trimEnd() + "… Read more")) lo = mid; else hi = mid - 1;
+      }
+      const space = text.lastIndexOf(" ", lo);
+      setCut(space > lo - 12 && space > 0 ? space : lo);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [text, open]);
+  }, [text]);
   useEffect(() => { if (!active) setOpen(false); }, [active]);
   const toggle = (e: React.SyntheticEvent) => { e.stopPropagation(); setOpen(o => !o); };
-  const link = "font-semibold text-[12px] leading-normal";
-  if (open) {
-    return (
-      <div className="max-h-[40vh] overflow-y-auto" style={{ scrollbarWidth: "none" }} onPointerDown={e => e.stopPropagation()}>
-        <p className="text-[12px] leading-normal whitespace-pre-line" style={{ color: "#a8a8a8" }}>
-          {text}{" "}
-          <button onClick={toggle} className={link} style={{ color: "#e8e8e8" }}>Show less</button>
-        </p>
-      </div>
-    );
-  }
+  const linkProps = {
+    onClick: toggle,
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    className: "font-semibold text-[12px] leading-normal",
+    style: { color: "#e8e8e8" },
+  };
+  const body = "text-[12px] leading-normal";
   return (
     <div className="relative">
-      <p ref={ref} className="text-[12px] leading-normal line-clamp-2" style={{ color: "#a8a8a8" }}>{text}</p>
-      {overflows && (
-        <button
-          onClick={toggle}
-          onPointerDown={e => e.stopPropagation()}
-          className={`absolute right-0 bottom-0 pl-6 ${link}`}
-          style={{ color: "#e8e8e8", background: "linear-gradient(to right, transparent, rgba(0,0,0,0.92) 22px)" }}
-        >
-          … Read more
-        </button>
+      {/* invisible copy at the same width, used to find where to cut */}
+      <p ref={measure} aria-hidden className={`${body} absolute left-0 right-0 top-0 invisible pointer-events-none`} />
+      {open ? (
+        <div className="max-h-[40vh] overflow-y-auto" style={{ scrollbarWidth: "none" }} onPointerDown={e => e.stopPropagation()}>
+          <p className={`${body} whitespace-pre-line`} style={{ color: "#a8a8a8" }}>
+            {text} <button {...linkProps}>Show less</button>
+          </p>
+        </div>
+      ) : (
+        <p className={`${body} line-clamp-2`} style={{ color: "#a8a8a8" }}>
+          {cut === null ? text : <>{text.slice(0, cut).replace(/[\s—–\-,;:·]+$/, "")}… <button {...linkProps}>Read more</button></>}
+        </p>
       )}
     </div>
   );

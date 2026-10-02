@@ -98,6 +98,16 @@
   }
   .channel-back svg{ width:40px; height:40px; display:block; }
   .channel-back:hover{ color:var(--on-surface); background:rgba(255,255,255,.08); }
+  /* remote focus (↑ from the button row): the icon buttons' focused look, a white circle in a ring, dark chevron */
+  .channel-back{ position:relative; }
+  .channel-back svg{ position:relative; z-index:1; }
+  .channel-back::before{
+    content:''; position:absolute; left:50%; top:50%; width:69px; height:69px; margin:-34.5px 0 0 -34.5px;
+    border-radius:50%; background:#fff; box-shadow:0 0 0 4.5px #121212, 0 0 0 7.5px var(--on-surface);
+    opacity:0; transform:scale(.8); transition:opacity .15s ease, transform .15s ease;
+  }
+  .channel-back.focused{ color:#3B3C3E; background:none; }
+  .channel-back.focused::before{ opacity:1; transform:none; }
   .avatar{
     width:112px; height:112px; border-radius:100px; flex:none;
     background:#404045; overflow:hidden;
@@ -750,7 +760,34 @@
   }
 
   // Back to the Content Picker: return via history when we came from it, otherwise open it
-  document.getElementById('channelBack').addEventListener('click', function(e){ e.stopPropagation(); goBackToPicker(); });
+  var channelBack = document.getElementById('channelBack');
+  channelBack.addEventListener('click', function(e){ e.stopPropagation(); goBackToPicker(); });
+
+  // Remote: ↑ from the top row of buttons focuses Back (in the header); Enter goes back, ↓ returns to the buttons.
+  // Handled before the main key handler (capture), so the rest of the focus model stays as it is.
+  var backFocus = false;
+  var renderBase = render;
+  render = function(){
+    renderBase();
+    channelBack.classList.toggle('focused', backFocus);
+    if(backFocus) document.querySelectorAll('.controls .focused').forEach(function(el){ el.classList.remove('focused'); });
+  };
+  window.addEventListener('keydown', function(e){
+    if(backFocus){
+      if(e.key === 'Escape' || e.key === 'Backspace'){ backFocus = false; render(); return; }   // main handler takes it from here
+      e.preventDefault(); e.stopImmediatePropagation();
+      wake();
+      if(e.key === 'Enter' || e.key === ' '){ if(!e.repeat) goBackToPicker(); }
+      else if(e.key === 'ArrowDown'){ backFocus = false; render(); }
+      return;
+    }
+    if(e.key === 'ArrowUp' && state.row === 0 && !isHidden() && !mv.open){
+      e.preventDefault(); e.stopImmediatePropagation();
+      wake();
+      backFocus = true;
+      render();
+    }
+  }, true);
   function goBackToPicker(){
     try {
       if(document.referrer && /content-picker\.html/.test(document.referrer) && history.length > 1){ history.back(); return; }
