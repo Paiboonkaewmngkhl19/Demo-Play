@@ -5,10 +5,9 @@
   Same conventions as the other prototypes: 1920x1080 canvas scaled to the window, works with mouse/touch
   and with a TV remote (arrow keys + Enter, Esc/Backspace returns to the Content Picker).
   Assets in live-stream-assets/ are exported from that Figma frame, except football-*.jpg (frames captured from the video).
-  The picture is a YouTube video (YT_ID below: AIS PLAY's Japan vs Thailand highlights,
-  Asian Games 2026 men's football) played through the YouTube
-  IFrame Player API with YouTube's own controls hidden, so this page's seek bar, skips, Key Moments and play/pause
-  drive it. The video loops; the stream's position maps onto it modulo its length. It starts muted (browser autoplay
+  The picture is a local video file (Video/Football.mp4: AIS PLAY's Japan vs Thailand highlights, Asian Games 2026
+  men's football) in a <video> with no controls of its own, so this page's seek bar, skips, Key Moments and
+  play/pause drive it. The video loops; the stream's position maps onto it modulo its length. It starts muted (browser autoplay
   rules) and unmutes on the first key press or click. The screen stays black until the video starts.
   Needs to be served over http(s) (dev server or GitHub Pages), not opened as a file.
   Controls are desktop-sized by default (see layout()); open with ?mode=tv for the exact Figma TV sizes.
@@ -60,11 +59,11 @@
   .video{
     position:absolute; inset:0; width:1920px; height:1080px; object-fit:cover; pointer-events:none;
   }
-  /* YouTube player: fades in once the video is actually playing; it never takes the mouse (the overlay does) */
-  .yt-wrap{ opacity:0; transition:opacity .6s ease; background:#000; overflow:hidden; }
-  .yt-wrap.ready{ opacity:1; }
-  /* shown at its own size, uncropped (YouTube may show its title bar while paused) */
-  .yt-wrap iframe{ width:100%; height:100%; display:block; border:0; pointer-events:none; }
+  /* the video: fades in once it's actually playing; it never takes the mouse (the overlay does) */
+  .video-wrap{ opacity:0; transition:opacity .6s ease; background:#000; overflow:hidden; }
+  .video-wrap.ready{ opacity:1; }
+  /* shown whole, uncropped */
+  .video-wrap video{ width:100%; height:100%; display:block; object-fit:contain; pointer-events:none; }
 
   /* ---------- Overlay ---------- */
   .scrim{
@@ -341,8 +340,8 @@
 
 <div id="tv-frame">
   <div id="canvas">
-    <!-- the YouTube API swaps #ytPlayer for its iframe -->
-    <div class="video yt-wrap" id="ytWrap"><div id="ytPlayer"></div></div>
+    <!-- the stream's picture: a local video file, looping, muted until the first key press or click -->
+    <div class="video video-wrap" id="videoWrap"><video src="Video/Football.mp4" muted loop playsinline preload="auto"></video></div>
 
     <div class="scrim ui" id="scrim"></div>
 
@@ -499,7 +498,7 @@
   // Left label = elapsed time of the picture on screen, starting at 00:00.
   // FAST_SPEED = seconds of video moved per second the key is held (fast rewind / forward)
   var SKIP_SECONDS = 10, FAST_SPEED = 10, HOLD_MS = 400, SCRUB_LINGER_MS = 1000;
-  // the stream opens one video length in (VIDEO_LEN, see YouTube video below), so the moments are behind live
+  // the stream opens one video length in (VIDEO_LEN, the video's length in seconds), so the moments are behind live
   var VIDEO_LEN = 381;
   var state = { row:1, col:0, live:VIDEO_LEN, pos:VIDEO_LEN, playing:true };
 
@@ -1025,46 +1024,60 @@
     window.location.href = 'content-picker.html';
   }
 
-  /* ---------------- YouTube video ---------------- */
-  // The page's own clock (state.pos / state.playing) stays in charge; syncVideo() makes the YouTube player follow
+  /* ---------------- video ---------------- */
+  // The page's own clock (state.pos / state.playing) stays in charge; syncVideo() makes the video player follow
   // it: play/pause, and a seek whenever the picture is more than SYNC_SLACK seconds off (seeks, skips, Key Moments,
   // or drift from buffering). While a checkpoint is selected the picture shows that moment.
-  var YT_ID = '6BK36X0wQZQ', SYNC_SLACK = 2;
-  var yt = null, ytReady = false, ytWrap = document.getElementById('ytWrap');
-  window.onYouTubeIframeAPIReady = function(){
-    yt = new YT.Player('ytPlayer', {
-      videoId: YT_ID, width: 1920, height: 1080,
-      playerVars: { autoplay:1, mute:1, controls:0, disablekb:1, fs:0, rel:0, iv_load_policy:3, playsinline:1,
-                    modestbranding:1, loop:1, playlist:YT_ID, origin:location.origin, cc_load_policy:0 },
-      events: {
-        onReady: function(){ ytReady = true; noCaptions(yt); syncVideo(); },
-        onStateChange: function(e){ if(e.data === YT.PlayerState.PLAYING){ ytWrap.classList.add('ready'); noCaptions(yt); } }
-      }
-    });
+  // A <video> wrapped in the play/pause/seek/time/length/mute calls the sync logic below uses
+  var PlayerState = { PLAYING:1, PAUSED:2, BUFFERING:3 };
+  function FilePlayer(video){
+    this.v = video;
+  }
+  FilePlayer.prototype = {
+    getPlayerState: function(){
+      var v = this.v;
+      if(v.paused || v.ended) return PlayerState.PAUSED;
+      return v.seeking || v.readyState < 3 ? PlayerState.BUFFERING : PlayerState.PLAYING;
+    },
+    getCurrentTime: function(){ return this.v.currentTime; },
+    getDuration: function(){ return isFinite(this.v.duration) ? this.v.duration : 0; },
+    seekTo: function(t){ this.v.currentTime = t; },
+    playVideo: function(){ var r = this.v.play(); if(r && r.catch) r.catch(function(){}); },
+    pauseVideo: function(){ this.v.pause(); },
+    mute: function(){ this.v.muted = true; },
+    unMute: function(){ this.v.muted = false; },
+    isMuted: function(){ return this.v.muted; }
   };
-  // YouTube switches on captions by itself (e.g. auto-generated Thai ones); the player shows the video only
-  function noCaptions(p){ try{ p.unloadModule('captions'); p.unloadModule('cc'); }catch(e){} }
-  var ytScript = document.createElement('script');
-  ytScript.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(ytScript);
+  // make a player for `wrap`'s <video>; onReady runs once its length is known, the wrap fades in once it plays
+  function makePlayer(wrap, onReady){
+    var video = wrap.querySelector('video'), player = new FilePlayer(video), done = false;
+    function ready(){ if(!done){ done = true; onReady(player); } }
+    video.addEventListener('loadedmetadata', ready);
+    if(video.readyState >= 1) ready();
+    video.addEventListener('playing', function(){ wrap.classList.add('ready'); });
+    return player;
+  }
+  var SYNC_SLACK = 2;
+  var videoWrap = document.getElementById('videoWrap'), playerReady = false;
+  var player = makePlayer(videoWrap, function(){ playerReady = true; syncVideo(); });
 
   function syncVideo(){
-    if(!ytReady || !yt.getPlayerState) return;
-    var ps = yt.getPlayerState(), S = YT.PlayerState;
+    if(!playerReady || !player.getPlayerState) return;
+    var ps = player.getPlayerState(), S = PlayerState;
     // mid-glide (10s skip) or mid fast-scrub: hold the picture still and seek once it settles
-    if(skipAnim || fastTimer){ if(ps === S.PLAYING) yt.pauseVideo(); return; }
+    if(skipAnim || fastTimer){ if(ps === S.PLAYING) player.pauseVideo(); return; }
     var browsing = km.on && km.idx !== null;
     var want = browsing ? km.items[km.idx].start : state.pos;
-    var dur = yt.getDuration() || 0, target = dur ? want % dur : want;
-    var diff = Math.abs(yt.getCurrentTime() - target);
+    var dur = player.getDuration() || 0, target = dur ? want % dur : want;
+    var diff = Math.abs(player.getCurrentTime() - target);
     if(dur) diff = Math.min(diff, dur - diff);   // the video loops, so 0:01 and the very end are close together
-    if(diff > SYNC_SLACK && ps !== S.BUFFERING) yt.seekTo(target, true);
+    if(diff > SYNC_SLACK && ps !== S.BUFFERING) player.seekTo(target, true);
     var play = state.playing && !browsing;
-    if(play && ps !== S.PLAYING && ps !== S.BUFFERING) yt.playVideo();
-    else if(!play && ps === S.PLAYING) yt.pauseVideo();
+    if(play && ps !== S.PLAYING && ps !== S.BUFFERING) player.playVideo();
+    else if(!play && ps === S.PLAYING) player.pauseVideo();
   }
   // autoplay only works muted; the first key press or click turns the sound on
-  function unmuteVideo(){ if(ytReady && yt.isMuted && yt.isMuted()) yt.unMute(); }
+  function unmuteVideo(){ if(playerReady && player.isMuted && player.isMuted()) player.unMute(); }
 
   /* ---------------- remote / keyboard ---------------- */
   var WAKE_KEYS = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' '];

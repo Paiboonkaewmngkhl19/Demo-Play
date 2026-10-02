@@ -2,8 +2,8 @@
 <!--
   Concert Live — the Live Stream player (live-stream.html) set up for a live concert: same overlay, controls and
   auto-hide, with concert details and Multi-View; no Key Moment mode.
-  The picture is a YouTube video (YT_ID below) played through the YouTube IFrame Player API with YouTube's own
-  controls hidden, so this page's seek bar, skips and play/pause drive it. The video loops; the
+  The picture is a local video file (Video/Concert.mp4) in a <video> with no controls of its own, so this page's
+  seek bar, skips and play/pause drive it. The video loops; the
   stream's position maps onto it modulo its length. It starts muted (browser autoplay rules) and unmutes on the
   first key press or click. The screen stays black until the video starts.
   Needs to be served over http(s) (dev server or GitHub Pages), not opened as a file.
@@ -62,12 +62,10 @@
     position:absolute; inset:0; width:1920px; height:1080px; object-fit:cover; pointer-events:none;
   }
 
-  /* YouTube player: fades in once the video is actually playing; it never takes the mouse (the overlay does) */
-  .yt-wrap{ opacity:0; transition:opacity .6s ease; background:#000; overflow:hidden; }
-  .yt-wrap.ready{ opacity:1; }
-  /* zoomed a little so YouTube's own title bar (top) and "more videos" strip (bottom), which it shows while
-     paused, fall outside the canvas; costs ~5% of the picture at each edge */
-  .yt-wrap iframe{ width:100%; height:100%; display:block; border:0; pointer-events:none; transform:scale(1.12); }
+  /* the video: fades in once it's actually playing; it never takes the mouse (the overlay does) */
+  .video-wrap{ opacity:0; transition:opacity .6s ease; background:#000; overflow:hidden; }
+  .video-wrap.ready{ opacity:1; }
+  .video-wrap video{ width:100%; height:100%; display:block; object-fit:cover; pointer-events:none; }
 
   /* ---------- Overlay ---------- */
   .scrim{
@@ -247,15 +245,16 @@
      Multi-View buttons, a divider, the "Screen Choice" pill (1, 2, 3, 4, 5, 6 and 1 large + 5 screens) and "Customize your screen" with one
      16:9 card per camera angle. Picking a layout splits the picture right away. Picking cards sets their priority:
      the number on a card is its screen (1 = main). Every screen plays at once, as cameras on the same concert: each is
-     its own YouTube player kept in step with the stream clock at its camera's offset. Only screen 1 has sound. */
+     its own video player kept in step with the stream clock at its camera's offset. Only screen 1 has sound. */
   .mv-screens{ position:absolute; inset:0; pointer-events:none; }
   .mv-screen{ position:absolute; overflow:hidden; background:#000; display:none; }
   .mv-screen img{ width:100%; height:100%; object-fit:cover; display:block; }
   /* the screen's own player: covers the still once it's playing */
-  .mv-yt{ position:absolute; inset:0; overflow:hidden; opacity:0; transition:opacity .6s ease; }
-  .mv-yt.ready{ opacity:1; }
-  .mv-yt iframe{ position:absolute; border:0; pointer-events:none; transform:scale(1.12); }
-  .mv-screen.empty .mv-yt{ display:none; }
+  .mv-video{ position:absolute; inset:0; overflow:hidden; opacity:0; transition:opacity .6s ease; }
+  .mv-video.ready{ opacity:1; }
+  /* fills its screen; screens that aren't 16:9 crop the picture */
+  .mv-video video{ width:100%; height:100%; display:block; object-fit:cover; pointer-events:none; }
+  .mv-screen.empty .mv-video{ display:none; }
   .mv-panel{ position:absolute; left:0; bottom:0; display:none; flex-direction:column; gap:32px; padding:60px 90px; }
   #canvas.mv-open .mv-panel{ display:flex; animation:slideUp .35s ease-out; }
   #canvas.mv-open .controls{ display:none; }
@@ -336,8 +335,8 @@
 <div id="tv-frame">
   <div id="canvas">
     <!-- Concert video: put the file in concert-assets/ and add it as the src, e.g. src="concert-assets/concert.mp4" -->
-    <!-- the YouTube API swaps #ytPlayer for its iframe -->
-    <div class="video yt-wrap" id="ytWrap"><div id="ytPlayer"></div></div>
+    <!-- the stream's picture: a local video file, looping, muted until the first key press or click -->
+    <div class="video video-wrap" id="videoWrap"><video src="Video/Concert.mp4" muted loop playsinline preload="auto"></video></div>
     <!-- Multi-View: screens 2-6 of a split layout, each with its own muted player (screen 1 is the video above) -->
     <div class="mv-screens" id="mvScreens"></div>
     <div class="scrim ui" id="scrim"></div>
@@ -747,36 +746,50 @@
     window.location.href = 'content-picker.html';
   }
 
-  /* ---------------- YouTube video ---------------- */
-  // The page's own clock (state.pos / state.playing) stays in charge; syncVideo() makes the YouTube player follow
+  /* ---------------- video ---------------- */
+  // The page's own clock (state.pos / state.playing) stays in charge; syncVideo() makes the video player follow
   // it: play/pause, and a seek whenever the picture is more than SYNC_SLACK seconds off (seeks, skips, or drift
   // from buffering).
-  var YT_ID = 'W-LOSGElZ_M', SYNC_SLACK = 2;
-  var yt = null, ytReady = false, ytWrap = document.getElementById('ytWrap');
-  window.onYouTubeIframeAPIReady = function(){
-    yt = new YT.Player('ytPlayer', {
-      videoId: YT_ID, width: 1920, height: 1080,
-      playerVars: { autoplay:1, mute:1, controls:0, disablekb:1, fs:0, rel:0, iv_load_policy:3, playsinline:1,
-                    modestbranding:1, loop:1, playlist:YT_ID, origin:location.origin, cc_load_policy:0 },
-      events: {
-        onReady: function(){ ytReady = true; noCaptions(yt); syncVideo(); },
-        onStateChange: function(e){ if(e.data === YT.PlayerState.PLAYING){ ytWrap.classList.add('ready'); noCaptions(yt); } }
-      }
-    });
+  // A <video> wrapped in the play/pause/seek/time/length/mute calls the sync logic below uses
+  var PlayerState = { PLAYING:1, PAUSED:2, BUFFERING:3 };
+  function FilePlayer(video){
+    this.v = video;
+  }
+  FilePlayer.prototype = {
+    getPlayerState: function(){
+      var v = this.v;
+      if(v.paused || v.ended) return PlayerState.PAUSED;
+      return v.seeking || v.readyState < 3 ? PlayerState.BUFFERING : PlayerState.PLAYING;
+    },
+    getCurrentTime: function(){ return this.v.currentTime; },
+    getDuration: function(){ return isFinite(this.v.duration) ? this.v.duration : 0; },
+    seekTo: function(t){ this.v.currentTime = t; },
+    playVideo: function(){ var r = this.v.play(); if(r && r.catch) r.catch(function(){}); },
+    pauseVideo: function(){ this.v.pause(); },
+    mute: function(){ this.v.muted = true; },
+    unMute: function(){ this.v.muted = false; },
+    isMuted: function(){ return this.v.muted; }
   };
-  // YouTube switches on captions by itself (e.g. auto-generated Thai ones); the player shows the video only
-  function noCaptions(p){ try{ p.unloadModule('captions'); p.unloadModule('cc'); }catch(e){} }
-  var ytScript = document.createElement('script');
-  ytScript.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(ytScript);
+  // make a player for `wrap`'s <video>; onReady runs once its length is known, the wrap fades in once it plays
+  function makePlayer(wrap, onReady){
+    var video = wrap.querySelector('video'), player = new FilePlayer(video), done = false;
+    function ready(){ if(!done){ done = true; onReady(player); } }
+    video.addEventListener('loadedmetadata', ready);
+    if(video.readyState >= 1) ready();
+    video.addEventListener('playing', function(){ wrap.classList.add('ready'); });
+    return player;
+  }
+  var SYNC_SLACK = 2;
+  var videoWrap = document.getElementById('videoWrap'), playerReady = false;
+  var player = makePlayer(videoWrap, function(){ playerReady = true; syncVideo(); });
 
   function syncVideo(){
-    if(ytReady && yt.getPlayerState) syncPlayer(yt, mvOffset(), true);
+    if(playerReady && player.getPlayerState) syncPlayer(player, mvOffset(), true);
     syncScreens();   // Multi-View: the other screens follow the same clock
   }
   // Keep one player on the stream clock, shifted by `offset` seconds (its camera); `on` = false pauses it
   function syncPlayer(p, offset, on){
-    var ps = p.getPlayerState(), S = YT.PlayerState;
+    var ps = p.getPlayerState(), S = PlayerState;
     // mid-glide (10s skip) or mid fast-scrub: hold the picture still and seek once it settles
     if(skipAnim || fastTimer){ if(ps === S.PLAYING) p.pauseVideo(); return; }
     var want = state.pos + offset;
@@ -789,7 +802,7 @@
     else if(!play && ps === S.PLAYING) p.pauseVideo();
   }
   // autoplay only works muted; the first key press or click turns the sound on
-  function unmuteVideo(){ if(ytReady && yt.isMuted && yt.isMuted()) yt.unMute(); }
+  function unmuteVideo(){ if(playerReady && player.isMuted && player.isMuted()) player.unMute(); }
 
   /* ---------------- Multi-View ---------------- */
   // Camera angles, picked into screens by priority on the cards (see mvActivate). The demo has one video, so each
@@ -805,7 +818,7 @@
   ];
   // Screen rectangles on the 1920x1080 canvas for each layout (Figma "Screen Choice", node 1218:6867); screen 0 is
   // the main one (the one with sound). Every layout fills the whole canvas; screens that aren't 16:9 crop their
-  // picture to fill (see fitVideo).
+  // picture to fill (object-fit: cover).
   // 2 = two halves; 3 = a large screen (2/3 width) with two stacked on its right; 5 = two on top, three below;
   // 6 = 3 x 2; 6f = a large screen (2/3 x 2/3) with two stacked on its right and three along the bottom.
   var MV_GAP = 4;
@@ -818,16 +831,6 @@
     6: [[0,0,640,540],[640,0,640,540],[1280,0,640,540],[0,540,640,540],[640,540,640,540],[1280,540,640,540]],
     '6f': [[0,0,1280,720],[1280,0,640,360],[1280,360,640,360],[0,720,640,360],[640,720,640,360],[1280,720,640,360]]
   };
-  // YouTube letterboxes inside its iframe, so to fill a screen that isn't 16:9 the iframe is made a 16:9 box big
-  // enough to cover the screen, centred, and the screen (overflow hidden) crops it
-  function fitVideo(w, h, wrap){
-    var f = (wrap || ytWrap).querySelector('iframe');
-    if(!f) return;
-    var s = Math.max(w / 1920, h / 1080), fw = 1920 * s, fh = 1080 * s;
-    f.style.position = 'absolute';
-    f.style.width = fw + 'px'; f.style.height = fh + 'px';
-    f.style.left = (w - fw) / 2 + 'px'; f.style.top = (h - fh) / 2 + 'px';
-  }
   // order = the picked videos in priority order: order[0] is on screen 1 (the one with sound), order[1] on screen 2…
   // rows: 0 = buttons + layouts, 1 = cards
   // It holds at most as many as the layout has screens, and never fewer than one.
@@ -847,23 +850,19 @@
     mvRows[1].push(card);
     var screen = document.createElement('div');
     screen.className = 'mv-screen';
-    screen.innerHTML = '<img alt=""><div class="mv-yt"><div></div></div><span>Pick a video below</span>';
+    screen.innerHTML = '<img alt=""><div class="mv-video"></div><span>Pick a video below</span>';
     mvScreens.appendChild(screen);
   });
-  // Screens 2-6 each get their own muted YouTube player, made the first time the screen shows a camera
+  // Screens 2-6 each get their own muted player of the same file, made the first time the screen shows a camera
   var screenPlayers = [];
   function screenPlayer(i){
-    if(screenPlayers[i] || !window.YT || !YT.Player) return screenPlayers[i];
-    var wrap = mvScreens.children[i].querySelector('.mv-yt'), sp = { ready:false, wrap:wrap };
-    sp.player = new YT.Player(wrap.firstChild, {
-      videoId: YT_ID, width: 1920, height: 1080,
-      playerVars: { autoplay:0, mute:1, controls:0, disablekb:1, fs:0, rel:0, iv_load_policy:3, playsinline:1,
-                    modestbranding:1, loop:1, playlist:YT_ID, origin:location.origin, cc_load_policy:0 },
-      events: {
-        onReady: function(){ sp.ready = true; sp.player.mute(); noCaptions(sp.player); layoutScreens(); syncScreens(); },
-        onStateChange: function(e){ if(e.data === YT.PlayerState.PLAYING){ wrap.classList.add('ready'); noCaptions(sp.player); } }
-      }
-    });
+    if(screenPlayers[i]) return screenPlayers[i];
+    var wrap = mvScreens.children[i].querySelector('.mv-video'), sp = { ready:false, wrap:wrap };
+    var video = document.createElement('video');
+    video.src = videoWrap.querySelector('video').getAttribute('src');
+    video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'auto';
+    wrap.appendChild(video);
+    sp.player = makePlayer(wrap, function(){ sp.ready = true; syncScreens(); });
     screenPlayers[i] = sp;
     return sp;
   }
@@ -890,8 +889,7 @@
       el.style.left = (r[0] + g) + 'px'; el.style.top = (r[1] + g) + 'px';
       el.style.width = (r[2] - 2*g) + 'px'; el.style.height = (r[3] - 2*g) + 'px';
     }
-    place(ytWrap, rects[0]);
-    fitVideo(rects[0][2] - 2*g, rects[0][3] - 2*g);
+    place(videoWrap, rects[0]);
     Array.prototype.forEach.call(mvScreens.children, function(el, i){
       var r = rects[i + 1];
       el.style.display = r ? 'block' : 'none';
@@ -901,7 +899,6 @@
       el.classList.toggle('empty', a === undefined);
       if(a !== undefined){
         el.style.display = 'block'; setSrc(el.firstChild, ANGLES[a].img);
-        fitVideo(r[2] - 2*g, r[3] - 2*g, el.querySelector('.mv-yt'));
       }
       else el.style.display = 'flex';
     });
