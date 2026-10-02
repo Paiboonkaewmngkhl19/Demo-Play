@@ -90,6 +90,14 @@
     display:flex; gap:24px; align-items:flex-start;
     padding:60px 90px;
   }
+  /* Back to the Content Picker: a chevron left of the channel logo, vertically centred on it */
+  .channel-back{
+    width:56px; height:112px; margin-right:8px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--on-surface-variant); border-radius:16px; transition:color .15s ease, background .15s ease;
+  }
+  .channel-back svg{ width:40px; height:40px; display:block; }
+  .channel-back:hover{ color:var(--on-surface); background:rgba(255,255,255,.08); }
   .avatar{
     width:112px; height:112px; border-radius:100px; flex:none;
     background:#404045; overflow:hidden;
@@ -342,6 +350,9 @@
     <div class="scrim ui" id="scrim"></div>
     <div class="ui" id="ui">
       <header class="channel">
+        <button class="channel-back" id="channelBack" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
         <div class="avatar concert-avatar"><img src="concert-assets/channel-cool.png" alt="Cool Channel"></div>
         <div class="channel-text">
           <h1 class="channel-title">TOMORROW X TOGETHER — Love Language</h1>
@@ -739,6 +750,7 @@
   }
 
   // Back to the Content Picker: return via history when we came from it, otherwise open it
+  document.getElementById('channelBack').addEventListener('click', function(e){ e.stopPropagation(); goBackToPicker(); });
   function goBackToPicker(){
     try {
       if(document.referrer && /content-picker\.html/.test(document.referrer) && history.length > 1){ history.back(); return; }
