@@ -4,3 +4,6 @@ dist
 *.log
 .env
 .env.*
+
+# Source videos too big for GitHub (100 MB per file); the site uses the converted .mp4
+tv-features-test/Video/*.mov
