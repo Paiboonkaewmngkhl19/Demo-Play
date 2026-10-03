@@ -290,8 +290,8 @@ const BADGE_STYLE: Record<Badge, string> = {
 };
 
 const PHONE_QUERY = "(max-width: 520px)";
-// Figma: 44px status bar (phone frame only), 76px nav + 16px home indicator (frame) or the device's safe area (phone)
-const STATUS_H = 44, NAV_H = 76, INDICATOR_H = 16;
+// 44px status bar (phone frame only), 76px nav + 32px below it (frame), or at least 32px / the safe area (phone)
+const STATUS_H = 44, NAV_H = 76, INDICATOR_H = 32;
 
 // Opened from the TV Content Picker (?from=picker): offer a way back to it
 const PICKER_URL = `${import.meta.env.BASE_URL}tv-features-test/content-picker.html`;
@@ -474,7 +474,8 @@ export default function App() {
     wheelCleanup.current = () => node.removeEventListener("wheel", handler);
   }, []);
 
-  const navBottom = isPhone ? "env(safe-area-inset-bottom, 0px)" : `${INDICATOR_H}px`;
+  // space below the tab row: 32px, or the phone's own home-bar area if that's taller
+  const navBottom = isPhone ? `max(${INDICATOR_H}px, env(safe-area-inset-bottom, 0px))` : `${INDICATOR_H}px`;
   const feedBottom = `calc(${NAV_H}px + ${navBottom})`;
 
   const screenBody = (
@@ -1086,7 +1087,7 @@ function FeedCard({
             </button>
           </div>
 
-          <div className="flex flex-col items-center justify-center gap-5 pl-2 pr-4 py-4 flex-shrink-0">
+          <div className="flex flex-col items-center justify-center gap-5 px-2 py-4 flex-shrink-0">
             <button onClick={e => { stop(e); onProfile(); }} aria-label={item.publisher.name}>
               <ProfileLogo publisher={item.publisher} />
             </button>
