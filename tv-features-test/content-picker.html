@@ -81,12 +81,13 @@
     border-radius:24px;
     cursor:pointer;
     outline:none;
-    overflow:hidden;
+    overflow:visible;   /* the focus ring sits outside the card; the poster clips itself */
     -webkit-tap-highlight-color:transparent;
-    transition:transform .2s cubic-bezier(.22,1.4,.5,1), box-shadow .2s ease, background .2s ease, border-color .2s ease;
+    transform-origin:bottom center;   /* focus grows the card upward from its bottom edge */
+    transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .2s ease, background .2s ease, border-color .2s ease;
   }
   .card::before{ /* accent wash behind the icon */
-    content:""; position:absolute; inset:0;
+    content:""; position:absolute; inset:0; border-radius:inherit;
     background:radial-gradient(280px 220px at 18% 8%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
     pointer-events:none;
   }
@@ -110,11 +111,43 @@
   }
   .card .poster img{ width:100%; height:100%; object-fit:cover; object-position:top; display:block; transform-origin:top center; }
   .card.has-poster::before{ display:none; }
-  /* focus: a white ring standing a little off the card (the gap shows the page behind), slightly enlarged */
-  .focused{
-    transform:scale(1.06);
-    outline:4px solid #fff; outline-offset:8px;
-    z-index:5;
+  /* ---------- Focus ----------
+     The focused card grows ~9% upward from its bottom edge. Around it floats ONE shared "glass" ring for the whole
+     page (#focusRing, placed by placeRing()): it glides from card to card instead of each card drawing its own, so
+     it never blinks. 6px gap, 8px thick, corners concentric with the card; filled with a blurred, brightened, more
+     saturated copy of the focused card's artwork (two stacked layers that crossfade when focus moves), cut to a
+     ring by padding + mask-composite: exclude; a 1px white highlight on its outer edge and a soft outer glow. The
+     ring moves with translate + width/height in the same 220ms ease-out as the card's scale. */
+  .focused{ transform:scale(1.09); z-index:5; }
+  .focus-ring{
+    --gap:6px; --w:8px; --ease:cubic-bezier(.2,0,0,1);
+    position:absolute; left:0; top:0; z-index:6; pointer-events:none; opacity:0;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.6), 0 0 15px rgba(255,255,255,.15);
+    transition:transform .22s var(--ease), width .22s var(--ease), height .22s var(--ease), border-radius .22s var(--ease), opacity .2s ease;
+    will-change:transform, width, height;
+  }
+  .focus-ring.on{ opacity:1; }
+  /* placed without sliding (first focus, resize, reduced motion): only the fade-in runs */
+  .focus-ring.instant{ transition:opacity .2s ease; }
+  .focus-glass{
+    position:absolute; inset:0; border-radius:inherit; padding:var(--w); overflow:hidden;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+  .focus-glass i{
+    position:absolute; inset:0; opacity:0;
+    background:
+      linear-gradient(to bottom, transparent 40%, #161c2c 72%),
+      var(--img, none) top center / 100% auto no-repeat,
+      #161c2c;
+    filter:blur(5px) brightness(1.6) saturate(1.3);
+    transition:opacity .22s cubic-bezier(.2,0,0,1);
+  }
+  .focus-ring.instant .focus-glass i{ transition:none; }
+  @media (prefers-reduced-motion: reduce){
+    .card{ transition:none; }
+    .focus-ring, .focus-glass i{ transition:none; }
   }
 
   /* ---------- Footer ---------- */
@@ -151,7 +184,9 @@
   body.fluid .card .poster{ height:63% !important; border-radius:18px 18px 0 0; }   /* beats the per-card desktop height */
   body.fluid .card b{ font-size:clamp(20px, 3.4vw, 28px); }
   body.fluid .card span.desc{ font-size:clamp(13px, 2vw, 16px); }
-  body.fluid .focused{ transform:scale(1.03); outline-width:3px; outline-offset:5px; }
+  body.fluid .focused{ transform:scale(1.05); }
+  body.fluid #grid{ position:relative; }   /* the ring is placed inside the grid, so it scrolls with the cards */
+  body.fluid .focus-ring{ --gap:4px; --w:5px; }
   body.fluid footer{ margin-top:36px; }
   body.fluid .hints{ gap:20px; font-size:14px; flex-wrap:wrap; justify-content:center; }
   body.fluid .hints kbd{ height:32px; }
@@ -241,7 +276,7 @@
     el.type = 'button';
     el.className = 'card';
     el.style.setProperty('--accent', c.accent);
-    if(c.image) el.classList.add('has-poster');
+    if(c.image){ el.classList.add('has-poster'); el.style.setProperty('--ring-img', 'url("'+c.image+'")'); }
     el.innerHTML =
       (c.image ? '<span class="poster"'+(c.imageHeight ? ' style="height:'+c.imageHeight+'px"' : '')+'><img src="'+c.image+'" alt=""'+(c.imageZoom ? ' style="transform:scale('+c.imageZoom+')'+(c.imageOrigin ? ';transform-origin:'+c.imageOrigin : '')+'"' : '')+'></span>' : '<span class="ic">'+ICONS[c.icon]+'</span>')+
       '<b>'+c.name+'</b><span class="desc">'+c.desc+'</span>';
@@ -250,6 +285,46 @@
     grid.appendChild(el);
     cards.push(el);
   });
+
+  /* ---------------- shared sliding focus ring ---------------- */
+  var ring = document.createElement('div');
+  ring.className = 'focus-ring instant';
+  ring.id = 'focusRing';
+  ring.setAttribute('aria-hidden', 'true');
+  ring.innerHTML = '<div class="focus-glass"><i></i><i></i></div>';
+  grid.appendChild(ring);
+  var layers = ring.querySelectorAll('.focus-glass i'), front = 0, ringImg = null, ringShown = false;
+  var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Place the ring around the focused card's FINAL rect: worked out from its layout box (offset*, which ignore
+  // transforms) and the focus scale, not measured mid-animation. Changing the values mid-glide simply retargets the
+  // CSS transition from where the ring is now, so fast key presses never queue or jump.
+  function placeRing(instant){
+    if(!showFocus){ ring.classList.remove('on'); ringShown = false; return; }
+    var card = cards[state.focus], rs = getComputedStyle(ring);
+    var o = parseFloat(rs.getPropertyValue('--gap')) + parseFloat(rs.getPropertyValue('--w'));
+    var sc = document.body.classList.contains('fluid') ? 1.05 : 1.09;
+    var cw = card.offsetWidth, ch = card.offsetHeight, fw = cw * sc, fh = ch * sc;
+    var fx = card.offsetLeft - (fw - cw) / 2, fy = card.offsetTop + ch - fh;   // grows up from the bottom edge
+    var slide = !instant && ringShown && !REDUCED;
+    if(!slide) ring.classList.add('instant');
+    ring.style.width = (fw + 2*o) + 'px';
+    ring.style.height = (fh + 2*o) + 'px';
+    ring.style.transform = 'translate(' + (fx - o) + 'px,' + (fy - o) + 'px)';
+    ring.style.borderRadius = (parseFloat(getComputedStyle(card).borderTopLeftRadius) * sc + o) + 'px';
+    // artwork: crossfade to the new card's image on the back layer, unless placing without a slide
+    var img = card.style.getPropertyValue('--ring-img');
+    if(img !== ringImg){
+      if(slide) front = 1 - front;
+      layers[front].style.setProperty('--img', img || 'none');
+      layers[front].style.opacity = 1;
+      layers[1 - front].style.opacity = 0;
+      ringImg = img;
+    }
+    if(!ringShown){ ring.classList.add('on'); ringShown = true; }
+    if(!slide){ void ring.offsetWidth; requestAnimationFrame(function(){ ring.classList.remove('instant'); }); }
+  }
+  window.addEventListener('resize', function(){ placeRing(true); });
 
   function render(){
     cards.forEach(function(el, i){
@@ -261,6 +336,7 @@
     if(showFocus && document.activeElement !== cards[state.focus]) cards[state.focus].focus({preventScroll:true});
     if(!showFocus && document.activeElement && document.activeElement.classList.contains('card')) document.activeElement.blur();
     if(document.body.classList.contains('fluid') && !TOUCH_ONLY) cards[state.focus].scrollIntoView({block:'nearest', behavior:'smooth'});
+    placeRing();
   }
 
   function open(i){

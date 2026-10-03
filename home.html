@@ -621,10 +621,6 @@
     var f = (typeof i === 'number') ? POSTER_POOL[((i%POSTER_POOL.length)+POSTER_POOL.length)%POSTER_POOL.length] : POSTER_POOL[_posterCursor++ % POSTER_POOL.length];
     return "background-image:url('posters/" + f + "');background-size:cover;background-position:center;";
   }
-  // Note: the "ca-portrait-card-*" assets (0, 1, 1b, 2, 3 "Big Mouth", 4, 5, 6)
-  // are deliberately excluded — they carry a baked-in rounded black frame/border
-  // that doesn't match the clean, full-bleed look of every other poster, so
-  // none of them are used anywhere in the pool.
   var PORTRAIT_POOL = [
     'F1.jpg','House.jpg','John.jpg','Venom.jpg','avatar.jpg','debt.jpg','topgun_m.jpg'
   ];

@@ -290,8 +290,8 @@ const BADGE_STYLE: Record<Badge, string> = {
 };
 
 const PHONE_QUERY = "(max-width: 520px)";
-// 44px status bar (phone frame only), 76px nav + 32px below it (frame), or at least 32px / the safe area (phone)
-const STATUS_H = 44, NAV_H = 76, INDICATOR_H = 32;
+// 44px status bar (phone frame only), 76px nav + 24px below it (frame), or at least 24px / the safe area (phone)
+const STATUS_H = 44, NAV_H = 76, INDICATOR_H = 24;
 
 // Opened from the TV Content Picker (?from=picker): offer a way back to it
 const PICKER_URL = `${import.meta.env.BASE_URL}tv-features-test/content-picker.html`;
@@ -474,7 +474,7 @@ export default function App() {
     wheelCleanup.current = () => node.removeEventListener("wheel", handler);
   }, []);
 
-  // space below the tab row: 32px, or the phone's own home-bar area if that's taller
+  // space below the tab row: 24px, or the phone's own home-bar area if that's taller
   const navBottom = isPhone ? `max(${INDICATOR_H}px, env(safe-area-inset-bottom, 0px))` : `${INDICATOR_H}px`;
   const feedBottom = `calc(${NAV_H}px + ${navBottom})`;
 
