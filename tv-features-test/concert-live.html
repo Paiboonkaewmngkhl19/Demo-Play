@@ -37,7 +37,9 @@
 
   *{box-sizing:border-box;}
   html,body{height:100%; margin:0;}
+  html,body{ overscroll-behavior:none; }
   body{
+    touch-action:manipulation;
     background:#000;
     color:var(--focus);
     font-family:'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -47,7 +49,7 @@
   }
   button{ font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
 
-  #tv-frame{ position:relative; background:#000; overflow:hidden; }
+  #tv-frame{ position:relative; background:#000; overflow:hidden; flex:none; }   /* never squeezed when turned */
   #canvas{
     position:absolute; top:0; left:0;
     width:1920px; height:1080px;
@@ -1078,7 +1080,9 @@
   document.getElementById('track').addEventListener('click', function(e){
     state.row = 1; state.col = 0;
     if(handleEl.contains(e.target)){ togglePlay(); return; }
-    var rect = this.getBoundingClientRect(), f = (e.clientX - rect.left) / rect.width;
+    // turned for landscape, the track runs down the screen: measure along y
+    var rect = this.getBoundingClientRect();
+    var f = rotated ? (e.clientY - rect.top) / rect.height : (e.clientX - rect.left) / rect.width;
     seekTo(f >= 0.995 ? state.live : f * state.live);   // the far right end always means live
     render();
   });
@@ -1091,15 +1095,24 @@
   // (24px text -> 15px, 84px buttons -> ~52px), whatever the window size. ?mode=tv keeps the exact Figma sizes.
   var TV_MODE = /[?&]mode=tv\b/.test(location.search);
   var DESKTOP_UI = 0.625;
+  // Responsive: TV and desktop show the 16:9 player as is. On a phone or tablet held upright the whole player is
+  // turned 90° so it plays in landscape, filling the screen. Touch screens get slightly larger controls.
+  var TOUCH = window.matchMedia('(pointer: coarse)').matches;
+  var rotated = false;
   function layout(){
-    var scale = Math.min(window.innerWidth/DESIGN_W, window.innerHeight/DESIGN_H);
+    var vw = window.innerWidth, vh = window.innerHeight;
+    rotated = !TV_MODE && vh > vw;
+    var w = rotated ? vh : vw, h = rotated ? vw : vh;
+    var scale = Math.min(w/DESIGN_W, h/DESIGN_H);
     frame.style.width = (DESIGN_W*scale)+'px';
     frame.style.height = (DESIGN_H*scale)+'px';
+    frame.style.transform = rotated ? 'rotate(90deg)' : '';
     canvas.style.transform = 'scale('+scale+')';
-    var ui = TV_MODE ? 1 : Math.min(1, DESKTOP_UI/scale);
+    var ui = TV_MODE ? 1 : Math.min(TOUCH ? 1.35 : 1, DESKTOP_UI/scale);
     canvas.style.setProperty('--ui', ui);
   }
   window.addEventListener('resize', layout);
+  window.addEventListener('orientationchange', function(){ setTimeout(layout, 200); });
   layout();
 
   /* ---------------- auto-hide ("wake") ---------------- */
