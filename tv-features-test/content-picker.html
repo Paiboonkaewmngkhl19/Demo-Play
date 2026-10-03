@@ -83,7 +83,7 @@
     outline:none;
     overflow:visible;   /* the focus ring sits outside the card; the poster clips itself */
     -webkit-tap-highlight-color:transparent;
-    transform-origin:bottom center;   /* focus grows the card upward from its bottom edge */
+    transform-origin:center center;   /* focus grows the card equally in every direction */
     transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .2s ease, background .2s ease, border-color .2s ease;
   }
   .card::before{ /* accent wash behind the icon */
@@ -112,15 +112,15 @@
   .card .poster img{ width:100%; height:100%; object-fit:cover; object-position:top; display:block; transform-origin:top center; }
   .card.has-poster::before{ display:none; }
   /* ---------- Focus ----------
-     The focused card grows ~9% upward from its bottom edge. Around it floats ONE shared "glass" ring for the whole
+     The focused card grows ~9% around its centre. Around it floats ONE shared "glass" ring for the whole
      page (#focusRing, placed by placeRing()): it glides from card to card instead of each card drawing its own, so
-     it never blinks. 6px gap, 8px thick, corners concentric with the card; filled with a blurred, brightened, more
+     it never blinks. No gap (it hugs the card), 8px thick, corners concentric with the card; filled with a blurred, brightened, more
      saturated copy of the focused card's artwork (two stacked layers that crossfade when focus moves), cut to a
      ring by padding + mask-composite: exclude; a 1px white highlight on its outer edge and a soft outer glow. The
      ring moves with translate + width/height in the same 220ms ease-out as the card's scale. */
   .focused{ transform:scale(1.09); z-index:5; }
   .focus-ring{
-    --gap:6px; --w:8px; --ease:cubic-bezier(.2,0,0,1);
+    --gap:0px; --w:8px; --ease:cubic-bezier(.2,0,0,1);
     position:absolute; left:0; top:0; z-index:6; pointer-events:none; opacity:0;
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.6), 0 0 15px rgba(255,255,255,.15);
     transition:transform .22s var(--ease), width .22s var(--ease), height .22s var(--ease), border-radius .22s var(--ease), opacity .2s ease;
@@ -186,7 +186,7 @@
   body.fluid .card span.desc{ font-size:clamp(13px, 2vw, 16px); }
   body.fluid .focused{ transform:scale(1.05); }
   body.fluid #grid{ position:relative; }   /* the ring is placed inside the grid, so it scrolls with the cards */
-  body.fluid .focus-ring{ --gap:4px; --w:5px; }
+  body.fluid .focus-ring{ --gap:0px; --w:5px; }
   body.fluid footer{ margin-top:36px; }
   body.fluid .hints{ gap:20px; font-size:14px; flex-wrap:wrap; justify-content:center; }
   body.fluid .hints kbd{ height:32px; }
@@ -305,7 +305,7 @@
     var o = parseFloat(rs.getPropertyValue('--gap')) + parseFloat(rs.getPropertyValue('--w'));
     var sc = document.body.classList.contains('fluid') ? 1.05 : 1.09;
     var cw = card.offsetWidth, ch = card.offsetHeight, fw = cw * sc, fh = ch * sc;
-    var fx = card.offsetLeft - (fw - cw) / 2, fy = card.offsetTop + ch - fh;   // grows up from the bottom edge
+    var fx = card.offsetLeft - (fw - cw) / 2, fy = card.offsetTop - (fh - ch) / 2;   // grows around its centre
     var slide = !instant && ringShown && !REDUCED;
     if(!slide) ring.classList.add('instant');
     ring.style.width = (fw + 2*o) + 'px';

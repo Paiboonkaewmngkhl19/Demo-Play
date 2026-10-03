@@ -47,20 +47,20 @@
   #tv-frame{
     position:relative;
     overflow:hidden;
-    background:var(--bg-0);
+    background:var(--bg-0);   /* page colour behind the hero picture and the rows */
     flex:0 0 auto;
   }
   #viewport{
     position:absolute;
     inset:0;
     overflow:hidden;
-    background:var(--bg-0);
+    z-index:1;   /* above the hero picture, below the pinned hero text and nav */
   }
   #stage{
     width:1920px;
     transform-origin:top left;
     position:relative;
-    transition:transform .38s cubic-bezier(.22,.9,.32,1);
+    transition:transform .22s cubic-bezier(.2,0,0,1);   /* same timing as the rails and the focus ring */
     /* The bg-1→bg-0 stop below used to be "32%" — a percentage of #stage's
        OWN height, which is the height of the entire scrollable page (many
        thousands of px). That meant the fade only finished 32% of the way
@@ -72,10 +72,9 @@
        distance instead ties it to the hero's own height regardless of how
        tall the page grows, so the two fades land on the same color.
        */
-    background:
-      radial-gradient(1100px 620px at 78% 0%, rgba(112,39,217,0.35), transparent 60%),
-      radial-gradient(900px 500px at 10% 4%, rgba(209,45,173,0.18), transparent 55%),
-      linear-gradient(180deg, var(--bg-1) 0px, var(--bg-0) 520px);
+    /* fully transparent: the page colour is the tv-frame's, behind the pinned hero picture, so no edge ever scrolls
+       into view (the old opaque band from 960px down rose over the picture as a hard line) */
+    background:none;
   }
 
   /* ---------- Top nav ---------- */
@@ -90,7 +89,7 @@
     align-items:flex-start;
     justify-content:space-between;
     padding:24px 110px 56px;
-    background:linear-gradient(180deg, rgba(8,6,20,.88) 0%, rgba(8,6,20,.6) 55%, rgba(8,6,20,0) 100%);
+    background:linear-gradient(180deg, rgba(8,6,20,.56) 0%, rgba(8,6,20,.38) 55%, rgba(8,6,20,0) 100%);   /* lightened 20%, twice */
   }
   .topnav .profile{
     width:60px;height:60px;border-radius:999px;
@@ -106,21 +105,27 @@
     margin-left:60px;
   }
   .navsearch{
-    width:32px;height:32px;border-radius:999px;
+    width:60px;height:60px;border-radius:999px;
     display:flex;align-items:center;justify-content:center;
-    color:#fff;opacity:.85;flex:0 0 auto;
-    font-size:20px;
+    color:#fff;flex:0 0 auto;
+    font-size:20px;cursor:pointer;
   }
   .navtab{
-    height:60px;padding:0 20px;border-radius:999px;
+    height:60px;padding:0 20px;border-radius:999px;   /* border-box: the size already included the old border */
     display:flex;align-items:center;justify-content:center;
     font-size:19px;color:#fff;text-shadow:0 0 6px rgba(0,0,0,.4);
-    background:transparent;border:3px solid transparent;
+    background:transparent;border:0;   /* no stroke: the glass fill meets the focus ring directly */
     white-space:nowrap;cursor:pointer;
   }
-  .navtab.item.focused{
-    background:rgba(222,222,222,0.5);
-    backdrop-filter:blur(10px);
+  /* every top-bar item (profile, search, tabs) is focusable; focused = white pill with black text / icon */
+  .topnav .item{ transition:transform .22s ease, background .15s ease, color .15s ease; }
+  .navtab.active{ background:rgba(255,255,255,.22); backdrop-filter:blur(10px); }
+  /* focused top-bar item: the same frosted glass fill as a focused chip, white text / icon (ring around it) */
+  .topnav .item.focused{
+    background:linear-gradient(135deg, rgba(214,222,240,.47) 0%, rgba(150,160,186,.39) 55%, rgba(118,128,154,.35) 100%);
+    backdrop-filter:blur(12px) saturate(1.4);
+    border-color:transparent; box-shadow:none;
+    color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.35);
   }
 
   /* ---------- Hero banner ----------
@@ -130,6 +135,9 @@
      reserves the same height in normal flow so rows start exactly where
      they did before. Past row 8 ("no more dynamic background"), it fades
      out via .hero-hidden instead of scrolling away. */
+  /* The hero text is pinned above the rows (transparent, so the first rail can sit on the picture); the picture
+     itself is .hero-backdrop, behind the rows, reaching down past the first rail. Rows are clipped at the hero's
+     bottom edge while the hero shows (see renderStageTransform), as the opaque hero used to hide them. */
   .hero{
     position:absolute;
     top:0;
@@ -140,22 +148,32 @@
     overflow:hidden;
     transform-origin:top left;
     z-index:5;
-    transition:opacity .4s ease;
+    transition:opacity .3s cubic-bezier(.2,0,0,1);
+    pointer-events:none;
   }
-  .hero.hero-hidden{opacity:0;pointer-events:none;}
+  .hero.hero-hidden, .hero-backdrop.hero-hidden{opacity:0;}
+  .row-block{ transition:opacity .22s cubic-bezier(.2,0,0,1); }
+  .row-block.row-above{ opacity:0; }
+  /* full-screen rails: page colour fading to transparent under the nav (nav height x 1.5), so rails scrolling up
+     fade out before they reach it */
+  .top-scrim{
+    position:absolute; top:0; left:0; width:1920px; height:170px; z-index:999; transform-origin:top left;
+    background:linear-gradient(180deg, var(--bg-0) 0%, var(--bg-0) 45%, rgba(10,7,20,0) 100%);
+    opacity:0; transition:opacity .3s cubic-bezier(.2,0,0,1); pointer-events:none;
+  }
+  .top-scrim.on{ opacity:1; }
   #hero-spacer{height:600px;}
-  .hero-bg{position:absolute;inset:0;z-index:-1;background-size:cover;background-position:center 30%;transition:opacity .6s ease;}
-  .hero::before{
-    content:"";position:absolute;inset:0;z-index:0;
-    background:
-      radial-gradient(900px 620px at 68% 12%, rgba(230,60,70,0.22), transparent 60%),
-      radial-gradient(700px 500px at 20% 0%, rgba(112,39,217,0.22), transparent 55%),
-      linear-gradient(100deg, #12091f 22%, rgba(18,9,31,0.75) 46%, rgba(18,9,31,0.25) 68%, transparent 100%),
-      linear-gradient(180deg, rgba(28,16,51,0.35) 0%, rgba(18,9,31,0.55) 55%, var(--bg-0) 100%);
+  .hero-backdrop{
+    position:absolute; top:0; left:0; width:1920px; height:1080px; z-index:0;
+    transform-origin:top left; overflow:hidden; transition:opacity .3s cubic-bezier(.2,0,0,1); pointer-events:none;
   }
-  .hero::after{
-    content:"";position:absolute;left:0;right:0;bottom:0;height:220px;z-index:0;
-    background:linear-gradient(180deg, rgba(10,7,20,0) 0%, var(--bg-0) 100%);
+  .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center 30%;transition:opacity .6s ease;}
+  /* only a dark wash behind the text on the left and a fade into the page at the bottom: the picture stays bright */
+  .hero-backdrop::after{
+    content:"";position:absolute;inset:0;
+    background:
+      linear-gradient(90deg, rgba(10,8,24,.88) 0%, rgba(10,8,24,.62) 30%, rgba(10,8,24,.12) 58%, transparent 75%),
+      linear-gradient(180deg, transparent 52%, rgba(10,8,24,.55) 74%, var(--bg-0) 96%);
   }
   .hero-content{
     position:relative;z-index:1;
@@ -164,15 +182,17 @@
     transition:opacity .25s ease;
   }
   .hero-title{
-    font-size:52px;font-weight:600;line-height:1.15;
-    text-shadow:0 0 10px rgba(0,0,0,.6);
+    font-size:72px;font-weight:700;line-height:1.08;letter-spacing:-.01em;max-width:760px;
+    text-shadow:0 2px 12px rgba(0,0,0,.35);
     margin:0 0 26px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
   .hero-meta-row{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+  /* channel / provider logo, inline before the channel name */
   .hero-logo{
-    height:33px;padding:0 12px;border-radius:6px;
-    background:rgba(255,255,255,0.14);
-    display:flex;align-items:center;font-weight:700;font-size:16px;letter-spacing:.02em;
+    height:34px;padding:0 10px;border-radius:6px;
+    background:#fff;color:#111;
+    display:inline-flex;align-items:center;font-weight:800;font-size:15px;letter-spacing:.04em;
   }
   .hero-channel{font-size:22px;color:#fff;opacity:.95;}
   .badge-live{
@@ -184,10 +204,11 @@
   .hero-desc{font-size:26px;line-height:1.4;opacity:.82;max-width:760px;text-shadow:0 0 6px rgba(0,0,0,.6);}
 
   /* ---------- Generic row / rail ---------- */
-  .row-block{position:relative;z-index:2;padding:0 0 44px;}
+  .row-block{position:relative;z-index:2;padding:0 0 56px;}   /* 56px from one rail to the next */
+  .chip-row{padding-bottom:50px;}   /* + the chips' 6px bottom padding = 56px */
   .row-title{
     font-size:29px;font-weight:500;color:#fff;
-    padding:0 110px;margin:0 0 20px;
+    padding:0 110px;margin:0 0 28px;   /* ~36px from the text's baseline to the cards */
   }
   /* Vertical padding + matching negative margin: gives focused cards (which
      scale up via .card.focused / .item.focused) room to grow without their
@@ -196,17 +217,21 @@
      scroll) — the negative margin cancels the padding back out for layout
      purposes, so row spacing is unaffected. */
   .rail-viewport{overflow:hidden;padding:26px 0 26px 110px;margin:-26px 0;position:relative;}
-  .rail-track{position:relative;display:flex;align-items:center;gap:26px;will-change:transform;transition:transform .38s cubic-bezier(.22,.9,.32,1);padding-right:120px;}
+  .rail-track{position:relative;display:flex;align-items:center;gap:32px;will-change:transform;transition:transform .22s cubic-bezier(.2,0,0,1);padding-right:120px;}
 
-  .card{position:relative;border-radius:12px;overflow:hidden;flex:0 0 auto;transform:scale(1);transition:transform .22s ease, box-shadow .22s ease;cursor:pointer;}
-  .card.focused{transform:scale(1.065);box-shadow:0 0 0 4px var(--focus-ring);z-index:5;}
+  .card{position:relative;border-radius:12px;overflow:hidden;flex:0 0 auto;transform:scale(1);transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s ease;cursor:pointer;}
+  .card.focused{transform:scale(1.07);z-index:5;}
 
   /* landscape card */
   .card-landscape{width:410px;height:230px;}
   .card-landscape.wide{width:470px;height:264px;}
   .card-art{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:14px;font-size:44px;opacity:.35;}
-  .card-tag{position:absolute;left:12px;top:178px;height:40px;padding:0 12px;border-radius:8px;background:rgba(0,0,0,.55);display:flex;align-items:center;font-size:15px;font-weight:700;letter-spacing:.03em;}
+  .card-tag{position:absolute;left:12px;bottom:12px;height:40px;padding:0 12px;border-radius:8px;background:rgba(0,0,0,.55);display:flex;align-items:center;font-size:15px;font-weight:700;letter-spacing:.03em;}
   .card-tag.has-logo{padding:6px 12px;}
+  /* provider logos: the badge image IS the tag (a rounded tile with the logo filling it), so it's shown full size with
+     no extra dark box or padding around it */
+  .platform.has-logo, .card-tag.has-logo{ padding:0 !important; background:none !important; height:auto !important; }
+  .platform.has-logo .badge-logo, .card-tag.has-logo .badge-logo{ width:60px !important; height:40px !important; object-fit:contain; border-radius:10px; }
   .badge-logo{height:22px;width:auto;display:block;object-fit:contain;}
   .platform{background:rgba(0,0,0,.6);}
   .platform .badge-logo{height:18px;}
@@ -217,6 +242,12 @@
   .card-content{width:371px;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;}
   .card-content .thumb{height:210px;position:relative;}
   .card-content .strip{background:var(--card-title-bg);padding:14px 12px;display:flex;flex-direction:column;gap:8px;}
+  /* focused card: its grey info areas turn ~30% darker so the focused card stands apart */
+  .card-content .strip, .epg-now, .epg-next, .card-karaoke{ transition:background-color .22s cubic-bezier(.2,0,0,1); }
+  .card-content.focused .strip{ background:#353239; }
+  .epg-card.focused .epg-now{ background:#2d2d2d; }
+  .epg-card.focused .epg-next{ background:#393939; }
+  .card-karaoke.focused{ background:#1e1e1e; }
   .card-content .strip .t{font-size:19px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .card-content .strip .s{font-size:16px;opacity:.85;margin-top:-4px;}
   .progress{height:8px;border-radius:2px;background:var(--progress-track);width:100%;overflow:hidden;}
@@ -235,7 +266,7 @@
      generic .item.focused effect on the wrap itself and re-apply it to the
      inner .card instead. */
   .rank-wrap.item.focused{transform:none;box-shadow:none;}
-  .rank-wrap.item.focused .card{transform:scale(1.065);box-shadow:0 0 0 4px var(--focus-ring);z-index:5;}
+  .rank-wrap.item.focused .card{transform:scale(1.07);z-index:5;}
 
   /* karaoke card */
   .card-karaoke{width:280px;border-radius:10px;overflow:hidden;background:#2b2b2b;}
@@ -247,19 +278,26 @@
   /* chips */
   .chip-row .rail-track{align-items:center;padding-top:6px;padding-bottom:6px;}
   .chip{
-    height:64px;padding:0 34px;border-radius:999px;display:flex;align-items:center;gap:10px;
-    background:var(--chip-bg);backdrop-filter:blur(10px);
-    font-weight:700;font-size:19px;white-space:nowrap;
+    position:relative;
+    height:76px;padding:0 44px;border-radius:999px;display:flex;align-items:center;gap:10px;   /* border-box: the size already included the old border */
+    background:rgba(255,255,255,0.13);backdrop-filter:blur(50px);   /* white 8% + 5% */
+    font-weight:700;font-size:26px;white-space:nowrap;
     box-shadow:inset 0 3px 3px rgba(0,0,0,.23);
-    border:3px solid transparent;
+    border:0;   /* no stroke */
   }
   .chip .ic{font-size:22px;}
-  .chip.focused{border-color:rgba(255,255,255,.85);}
+  /* focused chip: filled with the same frosted grey-blue glass as the ring around it, white text */
+  .chip.focused{
+    background:linear-gradient(135deg, rgba(214,222,240,.47) 0%, rgba(150,160,186,.39) 55%, rgba(118,128,154,.35) 100%);
+    backdrop-filter:blur(50px) saturate(1.4);
+    box-shadow:none;
+    color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.35);
+  }
 
   /* EPG / TV guide */
   .epg-row .rail-track{align-items:stretch;}
   .epg-countdown{
-    width:180px;height:280px;border-radius:999px;border:3px solid rgba(255,255,255,.8);
+    width:180px;height:280px;border-radius:999px;border:0;   /* no stroke; the focus ring outlines it when focused */
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
     background:radial-gradient(140px 160px at 30% 90%, rgba(165,139,212,.5), rgba(255,255,255,.12));
     flex:0 0 auto;
@@ -274,7 +312,7 @@
   .epg-sub{font-size:15px;opacity:.9;}
   .epg-heart{position:absolute;right:16px;top:16px;font-size:20px;opacity:.85;}
   .epg-heart img{width:18px;height:18px;object-fit:contain;display:block;}
-  .epg-next{background:#525252;padding:20px 18px;display:flex;flex-direction:column;gap:6px;}
+  .epg-next{background:#525252;padding:20px 18px;display:flex;flex-direction:column;gap:6px;flex:1;}   /* fills the card to its bottom edge (the rail stretches cards to 280px) */
 
   /* partner */
   .partner-row .rail-track{align-items:center;}
@@ -287,7 +325,7 @@
   .partner-logo{height:34px;}
 
   /* hero pick card (big) */
-  .hero-pick{position:relative;width:1240px;height:654px;border-radius:28px;overflow:hidden;flex:0 0 auto;border:5px solid rgba(255,255,255,.8);}
+  .hero-pick{position:relative;width:1240px;height:654px;border-radius:28px;overflow:hidden;flex:0 0 auto;border:0;}   /* no stroke */
   .hero-pick .bg{position:absolute;inset:0;}
   .hero-pick .scrim{position:absolute;inset:0;background:linear-gradient(180deg, rgba(10,8,38,0) 45%, #0a0826 92%);}
   .hero-pick .content{position:absolute;left:0;right:0;bottom:0;padding:40px;display:flex;flex-direction:column;gap:14px;}
@@ -300,7 +338,7 @@
   .catchip{background:rgba(255,255,255,.3);padding:9px 15px;border-radius:8px;font-size:19px;}
 
   /* portrait card */
-  .portrait-card{width:236px;height:354px;border-radius:12px;overflow:hidden;flex:0 0 auto;border:3px solid rgba(255,255,255,.12);box-shadow:0 0 22px rgba(0,0,0,.6);align-self:flex-start;}
+  .portrait-card{width:236px;height:354px;border-radius:12px;overflow:hidden;flex:0 0 auto;border:0;box-shadow:0 0 22px rgba(0,0,0,.6);align-self:flex-start;}   /* no stroke */
   .portrait-card .art{height:354px;position:relative;}
 
   /* ad banner */
@@ -324,30 +362,6 @@
 
   .end-spacer{height:70px;}
 
-  /* ---------- On-screen remote ---------- */
-  #remote{
-    position:absolute;right:18px;bottom:18px;z-index:100;
-    background:rgba(18,12,32,0.86);
-    border:1px solid rgba(255,255,255,0.14);
-    border-radius:20px;
-    padding:14px;
-    backdrop-filter:blur(8px);
-    box-shadow:0 10px 30px rgba(0,0,0,.5);
-    font-family:var(--font-display);
-    color:#fff;
-    display:flex;flex-direction:column;align-items:center;gap:10px;
-  }
-  #remote .hint{font-size:11px;opacity:.65;max-width:150px;text-align:center;line-height:1.4;}
-  .dpad{display:grid;grid-template-columns:44px 44px 44px;grid-template-rows:44px 44px 44px;gap:6px;}
-  .dpad button{
-    background:rgba(255,255,255,0.10);
-    border:1px solid rgba(255,255,255,0.18);
-    color:#fff;border-radius:10px;font-size:17px;
-    display:flex;align-items:center;justify-content:center;
-    cursor:pointer;
-  }
-  .dpad button:active{background:rgba(255,255,255,0.28);}
-  .dpad .ok{background:linear-gradient(135deg,#7027d9,#d12dad);font-weight:700;font-size:13px;}
   #toast{
     position:absolute;left:50%;bottom:110px;transform:translate(-50%,20px);
     background:rgba(20,14,36,.92);border:1px solid rgba(255,255,255,.16);
@@ -358,10 +372,36 @@
   #toast.show{opacity:1;transform:translate(-50%,0);}
 
   /* ---------- universal focus affordance (covers chips, nav tabs, epg/partner/portrait cards, rank cards, banners) ---------- */
-  .item{cursor:pointer;transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;}
-  .item.focused{transform:scale(1.06);box-shadow:0 0 0 4px var(--focus-ring);z-index:5;position:relative;}
-  .ad-banner.item.focused,.personalize.item.focused{transform:scale(1.0);box-shadow:0 0 0 4px var(--focus-ring);}
-  .btn-customize.item.focused{border-color:rgba(255,255,255,.9);}
+  .item{cursor:pointer;transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s ease, border-color .22s ease;}
+  .item.focused{transform:scale(1.07);z-index:5;position:relative;}   /* every rail: 7% */
+  .topnav .item.focused{transform:scale(1.06);}   /* the top bar isn't a rail: unchanged */
+  .toppick-row .item.focused{transform:scale(1.05);}   /* Top Pick For You: its big feature card would grow too far at 7% */
+  .ad-banner.item.focused,.personalize.item.focused{transform:scale(1.0);}
+
+  /* ---------- Sliding "glass" focus ring (same as the Choose a Demo page) ----------
+     ONE ring for the whole screen glides to whatever is focused (cards, chips, nav tabs, buttons), following the
+     rails as they slide and the page as it scrolls. 8px thick, right against the item, corners concentric with it;
+     filled with a blurred (4px), brightened (1.8), more saturated (1.4) copy of the item's artwork (two layers that crossfade when
+     focus moves; items without artwork get plain frosted glass), cut to a ring with padding + mask-composite;
+     a 1.2px white highlight (70%) on its outer edge and a soft glow. Placed by placeHomeRing(). */
+  .home-ring{
+    position:absolute; left:0; top:0; z-index:1001; pointer-events:none; opacity:0;   /* above the top bar (1000) too */
+    box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.7), 0 0 15px rgba(255,255,255,.15);
+    transition:opacity .2s ease; will-change:transform, width, height;
+  }
+  .home-ring.on{ opacity:1; }
+  .home-ring .glass{
+    position:absolute; inset:0; border-radius:inherit; overflow:hidden;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+  .home-ring .glass i{
+    position:absolute; inset:0; opacity:0;
+    background:var(--img, linear-gradient(135deg, #9aa3b5, #5c6478)) center / cover no-repeat;
+    filter:blur(4px) brightness(1.8) saturate(1.4);
+    transition:opacity .22s cubic-bezier(.2,0,0,1);
+  }
 
   /* This row sits flush against the bottom edge of the pinned hero (z-index:5,
      always painted on top). A center-anchored scale on focus would push the
@@ -372,14 +412,19 @@
      scale (vs. the generic 1.06) makes the grow/shrink between cards clearly
      visible in this row — the top-anchored origin means the extra growth
      only pushes the bottom edge down, never the top edge up. */
-  .hero-row .item.focused{transform-origin:50% 0%;transform:scale(1.1);}
+  .hero-row .item.focused{transform-origin:50% 50%;transform:scale(1.07);}   /* grows 7% evenly around its centre */
   /* Even with the top-anchored scale above, the focus ring's box-shadow
      spreads 4px outward past the card's own top edge, which used to sit
      flush against the hero's bottom edge with zero clearance — that 4px
      sliver of ring still poked behind the hero and got clipped. A small
      real gap (not cancelled out like rail-viewport's padding trick) between
      the hero and this row's content gives the ring room to fully clear it. */
-  .hero-row{padding-top:14px;}
+  .hero-row{padding-top:102px;padding-bottom:50px;}   /* 102px puts the chips 16px above the screen's bottom on first load */   /* 50px + the chips' 6px top padding = 56px from the cards to the chips */
+  .hero-row .card{overflow:visible;}   /* lets the Live badge hang over the card's edge */
+  .hero-row .card-badge-corner{left:-12px;top:14px;font-size:20px;padding:8px 18px 8px 22px;box-shadow:0 2px 6px rgba(0,0,0,.35);}
+  .rail-provider{position:absolute;left:14px;bottom:14px;}
+  .rail-provider .platform{display:flex;align-items:center;height:36px;padding:0 12px;border-radius:6px;font-size:14px;font-weight:800;color:#fff;}
+  .rail-provider .badge-logo{height:22px;display:block;}   /* room for the centre-scaled card's top edge below the pinned hero */
 
   @media (prefers-reduced-motion: reduce){
     .card, .item, .rail-track, #toast{transition:none;}
@@ -518,28 +563,31 @@
 
 <div id="tv-frame">
   <nav class="topnav">
-    <div class="profile">TN</div>
+    <div class="profile item" data-title="Profile">TN</div>
     <div class="center" data-row="nav">
-      <div class="navsearch"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
-      <div class="navtab item" data-label="Home">Home</div>
+      <div class="navsearch item" data-title="Search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+      <div class="navtab item active" data-label="Home">Home</div>
       <div class="navtab item" data-label="My List">My list</div>
       <div class="navtab item" data-label="Add-on">Add-on</div>
     </div>
   </nav>
 
-  <section class="hero">
+  <!-- hero picture: behind the rows (the first rail overlaps its lower part), pinned like the hero text -->
+  <div class="hero-backdrop">
     <div class="hero-bg hero-bg-a" style="background-image:url('posters/liver-ben.jpg');opacity:1;"></div>
     <div class="hero-bg hero-bg-b" style="opacity:0;"></div>
+  </div>
+  <!-- full-screen state: rails fade out under the nav -->
+  <div class="top-scrim" aria-hidden="true"></div>
+  <section class="hero">
     <div class="hero-content">
-      <div class="hero-meta-row">
-        <div class="hero-logo">MONOMAX</div>
-      </div>
       <h1 class="hero-title">Liverpool vs Brentford</h1>
       <div class="hero-meta-row">
+        <span class="hero-logo">MONOMAX</span>
         <span class="hero-channel">Channel 501: Monomax1</span>
         <span class="badge-live"><span class="dot"></span>Live</span>
       </div>
-      <p class="hero-desc">Catch Bayern Munich take on Stuttgart in an exciting Bundesliga clash. Follow the action live and don't miss a moment.</p>
+      <p class="hero-desc">Liverpool host Brentford at Anfield in a big Premier League clash. Follow every moment live, from kick-off to the final whistle.</p>
     </div>
   </section>
 
@@ -553,17 +601,6 @@
   </div>
 
   <div id="toast"></div>
-
-  <div id="remote">
-    <div class="hint">Use the arrow keys + Enter on your keyboard, or this remote</div>
-    <div class="dpad">
-      <span></span><button data-k="up" aria-label="up"><svg class="tri" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="12,5 19,17 5,17"></polygon></svg></button><span></span>
-      <button data-k="left" aria-label="left"><svg class="tri" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="17,5 17,19 5,12"></polygon></svg></button>
-      <button class="ok" data-k="ok" aria-label="ok">OK</button>
-      <button data-k="right" aria-label="right"><svg class="tri" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="7,5 7,19 19,12"></polygon></svg></button>
-      <span></span><button data-k="down" aria-label="down"><svg class="tri" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="12,19 5,7 19,7"></polygon></svg></button><span></span>
-    </div>
-  </div>
 </div>
 
 <div id="mobile-frame" hidden>
@@ -659,7 +696,7 @@
     };
     var v = map[name] || map.def;
     var logo = badgeImg(name);
-    if(logo) return '<span class="platform">' + logo + '</span>';
+    if(logo) return '<span class="platform has-logo">' + logo + '</span>';
     return '<span class="platform" style="background:' + v[1] + ';">' + v[0] + '</span>';
   }
 
@@ -686,31 +723,31 @@
      is focused here updates the hero background/title/description. */
   (function(){
     var items = [
-      {img:'liver-ben.jpg', wide:true, badge:'Live',
+      {img:'liver-ben.jpg', badge:'Live',
         hero:{title:'Liverpool vs Brentford', logo:'MONOMAX', channel:'Channel 501: Monomax1', live:true,
-          desc:"Catch Bayern Munich take on Stuttgart in an exciting Bundesliga clash. Follow the action live and don't miss a moment."}},
-      {img:'loki.jpg',
+          desc:"Liverpool host Brentford at Anfield in a big Premier League clash. Follow every moment live, from kick-off to the final whistle."}},
+      {img:'loki.jpg', plat:'disney',
         hero:{title:'Loki', logo:'DISNEY+', channel:'Marvel Studios · Season 2', live:false,
           desc:'Loki, the God of Mischief, must fix a fractured timeline as he is relentlessly pursued by the Time Variance Authority.'}},
-      {img:'last-of-us.jpg',
+      {img:'last-of-us.jpg', plat:'hbo',
         hero:{title:'The Last of Us', logo:'HBO MAX', channel:'HBO Original · Season 2', live:false,
           desc:'Joel and Ellie journey across a post-pandemic United States, facing new threats and impossible choices together.'}},
-      {img:'wicked.jpg',
+      {img:'wicked.jpg', plat:'netflix',
         hero:{title:'Wicked', logo:'NETFLIX', channel:'Movie · 2 hr 40 min', live:false,
           desc:'The untold story of the witches of Oz: Elphaba and Glinda, long before Dorothy ever arrived in the Land of Oz.'}},
-      {img:'superman.jpg',
+      {img:'superman.jpg', plat:'hbo',
         hero:{title:'Superman', logo:'HBO MAX', channel:'Movie · 2 hr 9 min', live:false,
           desc:'The Man of Steel balances his Kryptonian heritage with his human upbringing as the ultimate protector of Earth.'}},
-      {img:'topgun-m.jpg',
+      {img:'topgun-m.jpg', plat:'prime',
         hero:{title:'Top Gun: Maverick', logo:'PRIME VIDEO', channel:'Movie · 2 hr 11 min', live:false,
           desc:'After thirty years of service, Pete "Maverick" Mitchell must confront the past while training a new generation of elite pilots.'}},
-      {img:'how-to-train.jpg',
+      {img:'how-to-train.jpg', plat:'netflix',
         hero:{title:'How to Train Your Dragon', logo:'NETFLIX', channel:'Movie · 1 hr 44 min', live:false,
           desc:"A young Viking forms an unlikely friendship with a dragon, challenging his tribe's deep-rooted fear of the creatures."}},
       {img:'arsenal.jpg', badge:'Live',
         hero:{title:'Arsenal vs Chelsea', logo:'MONOMAX', channel:'Channel 502: Monomax2', live:true,
           desc:'A fierce London derby as Arsenal host Chelsea in a top-of-the-table Premier League showdown.'}},
-      {img:'f1.jpg',
+      {img:'f1.jpg', plat:'disney',
         hero:{title:'F1: The Movie', logo:'DISNEY+', channel:'Movie · 2 hr 35 min', live:false,
           desc:'A once-promising Formula 1 driver returns to mentor a young rookie and chase one last shot at glory.'}}
     ];
@@ -721,6 +758,7 @@
         ' data-hero-live="'+(it.hero.live?'1':'0')+'" data-hero-desc="'+it.hero.desc+'" data-hero-img="posters/'+it.img+'"'+
         ' style="background-image:url(\'posters/'+it.img+'\');background-size:cover;background-position:center;">'+
         (it.badge ? '<span class="card-badge-corner">'+it.badge+'</span>' : '') +
+        (it.plat ? '<span class="rail-provider">'+platformPill(it.plat)+'</span>' : '') +
       '</div>';
     }).join('');
     addRow('<div class="row-block hero-row"><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
@@ -734,7 +772,7 @@
       {label:'Kids'}, {label:'Game'}, {label:'Lifestyle'}, {label:'Music'},
       {label:'Documentary'}, {label:'Comedy'}, {label:'Horror'}, {label:'Anime'}
     ];
-    var html = chips.map(function(c){
+    var html = chips.map(function(c, i){
       return '<div class="chip item" data-title="'+c.label+'">'+c.label+'</div>';
     }).join('');
     addRow('<div class="row-block chip-row"><div class="rail-viewport"><div class="rail-track">'+html+'</div></div></div>');
@@ -801,8 +839,10 @@
     var apps = ['NETFLIX','HBO MAX','PRIME VIDEO','DISNEY+','VIU','WeTV','YouTube','Monomax','iQIYI','TrueID'];
     var cards = apps.map(function(a,i){
       var key = a.toLowerCase().indexOf('netflix')>=0?'netflix':a.toLowerCase().indexOf('hbo')>=0?'hbo':a.toLowerCase().indexOf('prime')>=0?'prime':a.toLowerCase().indexOf('disney')>=0?'disney':a.toLowerCase().indexOf('viu')>=0?'viu':null;
-      var logo = key ? badgeImg(key, 'badge-logo partner-logo') : null;
-      return '<div class="partner-card item" data-title="'+a+'" style="background:'+(key?'#101010':gradAt(i+2,100))+'">'+(logo || a)+'</div>';
+      // provider apps: the brand tile fills the whole card (its logo scaled up, on the brand colour)
+      var brandBg = {netflix:'#000', hbo:'#000', prime:'#1a98ff', disney:'#073c4e', viu:'#ffbf00'};
+      if(key) return '<div class="partner-card partner-brand item" data-title="'+a+'" style="background:'+brandBg[key]+' url(\'badges/tag-'+key+'.png\') center / cover no-repeat;"></div>';
+      return '<div class="partner-card item" data-title="'+a+'" style="background:'+gradAt(i+2,100)+'">'+a+'</div>';
     }).join('');
     addRow('<div class="row-block partner-row"><div class="rail-viewport"><div class="rail-track">'+
       '<div class="partner-allapps item" data-title="All Apps">All Apps</div>'+cards+
@@ -828,7 +868,7 @@
   }
 
   posterRail('Hot Off the Big Screen', [
-    {t:'New arrival feature', plat:'netflix', badge:'NEW'},
+    {t:'New arrival feature', plat:'prime'},
     {t:'Studio premiere', plat:'netflix'},
     {t:'Weekend feature', plat:'netflix'},
     {t:'Action feature', plat:'prime'},
@@ -854,15 +894,17 @@
       {t:'Badminton: Thailand Open Final', time:'Sat 14:00 PM'},
       {t:'Formula 1: Bangkok Street Circuit', time:'Sun 17:00 PM'}
     ];
-    var bigCard = '<div class="card item" style="width:421px;height:302px;border-radius:12px;position:relative;background-image:url(\'posters/live-fixture-crest.jpg\');background-size:cover;background-position:center;" data-title="'+big.t+'">'+
-      '<span class="card-badge-corner">Live</span>'+
-      '<div style="position:absolute;left:0;right:0;bottom:0;background:var(--card-title-bg);padding:14px 12px;font-size:19px;font-weight:600;">'+big.t+'</div>'+
-    '</div>';
+    // the live match: same size and layout as the rest of the rail, with a Live badge
+    var bigCard = '<div class="card card-content item" data-title="'+big.t+'">'+
+        '<div class="thumb" style="background-image:url(\'posters/live-fixture-crest.jpg\');background-size:cover;background-position:center;"></div>'+
+        '<div class="strip" style="position:relative;"><div class="t">'+big.t+'</div></div>'+
+        '<span class="card-badge-corner">Live</span>'+
+      '</div>';
     var rest = items.map(function(it,i){
       return '<div class="card card-content item" data-title="'+it.t+'">'+
         '<div class="thumb" style="'+posterStyle()+'"></div>'+
         '<div class="strip" style="position:relative;">'+
-          '<span class="card-badge-corner dim" style="left:-13px;top:-64px;font-size:14px;padding:6px 12px;">'+it.time+'</span>'+
+          '<span class="card-badge-corner dim" style="left:12px;top:-43px;font-size:14px;padding:6px 12px;border-radius:8px;">'+it.time+'</span>'+
           '<div class="t">'+it.t+'</div>'+
         '</div>'+
       '</div>';
@@ -905,7 +947,7 @@
     var posters = ['Prime Video pick','HBO Max pick','Disney+ pick','Netflix pick','Viu pick','Monomax pick'].map(function(t,i){
       return '<div class="card" style="width:482px;height:654px;border-radius:12px;'+posterStylePortrait()+'" data-title="'+t+'"></div>';
     });
-    addRow('<div class="row-block"><div class="row-title">Top Pick For You</div><div class="rail-viewport"><div class="rail-track">'+
+    addRow('<div class="row-block toppick-row"><div class="row-title">Top Pick For You</div><div class="rail-viewport"><div class="rail-track">'+
       heroCard +
       posters.map(function(h){return h.replace('<div class="card"','<div class="card item"');}).join('') +
     '</div></div></div>');
@@ -920,14 +962,14 @@
   /* ---------- Row: Watch List (landscape) ---------- */
   (function(){
     var items = [
-      {badge:'Rerun', wide:true},
       {},
       {},
       {},
-      {badge:'New'},
       {},
       {},
-      {wide:true}
+      {},
+      {},
+      {}
     ];
     var cards = items.map(function(it,i){
       return '<div class="card card-landscape'+(it.wide?' wide':'')+' item" data-title="Watch list item #'+(i+1)+'" style="'+posterStyle()+'">'+
@@ -1039,23 +1081,40 @@
   // prepend the nav row (already in DOM, not created via addRow)
   var navItems = Array.prototype.slice.call(document.querySelectorAll('.topnav .item'));
   rows.unshift({ el: document.querySelector('.topnav'), items: navItems, track: document.querySelector('.topnav .center') });
+  var NAV_HOME_COL = Math.max(0, navItems.indexOf(document.querySelector('.navtab[data-label="Home"]')));
 
-  var curRow = 0;
+  // first focus: the first card of the hero row (row 1; row 0 is the top nav)
+  var curRow = 1;
   var colByRow = rows.map(function(){ return 0; });
+  colByRow[0] = NAV_HOME_COL;
 
   function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 
+  var RING_W_DESIGN = 8;
+  // the scale an item grows to when focused (matches the .focused rules in the CSS)
+  function focusScale(el){
+    if(el.matches('.ad-banner, .personalize')) return 1;
+    if(el.closest('.topnav')) return 1.06;
+    if(el.closest('.toppick-row')) return 1.05;
+    return 1.07;   // every rail item, Top 10 posters included
+  }
   function updateTrackTransform(rowIdx){
     var r = rows[rowIdx];
     if(!r.track) return;
     var viewport = r.track.parentElement;
     var item = r.items[colByRow[rowIdx]];
     if(!item) return;
-    var containerWidth = viewport.clientWidth;
-    var trackWidth = r.track.scrollWidth;
-    var desired = -item.offsetLeft;
-    var maxNeg = Math.min(0, containerWidth - trackWidth);
-    var x = clamp(desired, maxNeg, 0);
+    // "Fixed focus": the focused item sits at the first item's slot (the anchor) and the rail slides under it. The
+    // rail stops at maxScroll, where the last item ends the same distance from the right edge as the first starts
+    // from the left (the rail's left inset), allowing for its focus scale-up and ring; past that the focus (and
+    // the ring) moves on alone to the last items. Short rails never scroll.
+    var pad = parseFloat(getComputedStyle(viewport).paddingLeft) || 0;
+    var first = r.items[0], last = r.items[r.items.length - 1];
+    var lastRight = last.offsetLeft + last.offsetWidth;
+    var extra = last.offsetWidth * (focusScale(last) - 1) / 2 + RING_W_DESIGN;
+    var maxScroll = Math.max(0, lastRight + extra + 2 * pad - viewport.clientWidth);
+    var desired = item.offsetLeft - first.offsetLeft;
+    var x = -clamp(desired, 0, maxScroll);
     r.track.style.transform = 'translateX(' + x + 'px)';
   }
 
@@ -1076,7 +1135,17 @@
   // Top 10 in Thailand Today — the "dynamic background" zone. rows[9]
   // (Top Pick For You) onward has no dynamic background driving the
   // screen, so normal center-lock scrolling takes over there.
-  var HERO_ZONE_LAST_ROW = 8;
+  // FULLSCREEN_FROM: the first rail that takes the whole screen (hero picture and text fade out); every rail above it
+  // sits over the pinned hero picture. Found by its title, so adding rows above it keeps working.
+  var FULLSCREEN_FROM_TITLE = 'Top Pick For You';
+  var FULLSCREEN_FROM = (function(){
+    for(var i = 0; i < rows.length; i++){
+      var t = rows[i].el && rows[i].el.querySelector('.row-title');
+      if(t && t.textContent.trim() === FULLSCREEN_FROM_TITLE) return i;
+    }
+    return 9;
+  })();
+  var HERO_ZONE_LAST_ROW = FULLSCREEN_FROM - 1;
   // Must match .hero's CSS height (design px) — used to keep rows clear of
   // the pinned hero's bottom edge.
   var HERO_HEIGHT = 600;
@@ -1129,6 +1198,13 @@
     // there's no more dynamic background driving the screen, so it fades
     // out instead of scrolling off.
     if(heroFixed) heroFixed.classList.toggle('hero-hidden', curRow > HERO_ZONE_LAST_ROW);
+    if(heroBackdrop) heroBackdrop.classList.toggle('hero-hidden', curRow > HERO_ZONE_LAST_ROW);
+    applyRowsMask(getScale());
+    // While the hero shows, rails above the focused one are hidden entirely (they fade out), so none of them peeks
+    // out above the focused rail; in the full-screen state the previous rail stays visible as usual.
+    rows.forEach(function(r, ri){
+      if(ri > 0 && r.el) r.el.classList.toggle('row-above', curRow <= HERO_ZONE_LAST_ROW && ri < curRow);
+    });
     if(curRow === HERO_ROW_INDEX){
       updateHeroFromItem(rows[HERO_ROW_INDEX].items[colByRow[HERO_ROW_INDEX]]);
     }
@@ -1160,8 +1236,8 @@
         // be revealed below IT, not just below the thin nav.
         var edgeMargin = HERO_HEIGHT * stageScale + 12 * stageScale;
         var bottomPad = 12 * stageScale;
-        var rowRectEdge = rowEl.getBoundingClientRect();
-        var edgeTop = rowRectEdge.top - fTop, edgeBottom = rowRectEdge.bottom - fTop;
+        var rowRectEdge = rowScreenBox(rowEl);
+        var edgeTop = rowRectEdge.top, edgeBottom = rowRectEdge.bottom;
         if(edgeTop < edgeMargin){
           scrollStageBy(edgeTop - edgeMargin);
         } else if(edgeBottom > frameH - bottomPad){
@@ -1176,15 +1252,15 @@
         // bottom of the screen, same as any normal below-the-fold content —
         // less content shown, but never hidden behind something else.
         var edgeMarginLock = HERO_HEIGHT * stageScale + 18 * stageScale;
-        var lockTop = rowEl.getBoundingClientRect().top - fTop;
+        var lockTop = rowScreenBox(rowEl).top;
         var lockDelta = lockTop - edgeMarginLock;
         if(Math.abs(lockDelta) > 1){
           scrollStageBy(lockDelta);
         }
       } else {
         var targetCenter = navH + (frameH - navH) / 2;
-        var rowRect = rowEl.getBoundingClientRect();
-        var rowCenter = (rowRect.top - fTop) + rowRect.height / 2;
+        var rowRect = rowScreenBox(rowEl);
+        var rowCenter = rowRect.top + rowRect.height / 2;
         var delta = rowCenter - targetCenter;
         if(Math.abs(delta) > 1){
           scrollStageBy(delta);
@@ -1211,7 +1287,7 @@
     var it = r.items[colByRow[curRow]];
     if(!it) return;
     var label = it.getAttribute('data-title') || it.textContent.trim() || 'Selected';
-    it.animate([{transform:getComputedStyle(it).transform},{transform:'scale(0.97)'},{transform:'scale(1.065)'}], {duration:220, easing:'ease-out'});
+    it.animate([{transform:getComputedStyle(it).transform},{transform:'scale(0.97)'},{transform:'scale(1.07)'}], {duration:220, easing:'ease-out'});
     toast('Now playing: ' + label);
   }
 
@@ -1244,17 +1320,6 @@
     }
   });
 
-  document.querySelectorAll('.dpad button').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var k = btn.getAttribute('data-k');
-      if(k==='up') moveRow(-1);
-      else if(k==='down') moveRow(1);
-      else if(k==='left') moveCol(-1);
-      else if(k==='right') moveCol(1);
-      else if(k==='ok') selectCurrent();
-    });
-  });
-
   // mouse/touch: clicking an item focuses + selects it
   rows.forEach(function(r,ri){
     r.items.forEach(function(it,ci){
@@ -1282,6 +1347,21 @@
   var viewport = document.getElementById('viewport');
   var topnavFixed = document.querySelector('.topnav');
   var heroFixed = document.querySelector('.hero');
+  var heroBackdrop = document.querySelector('.hero-backdrop');
+  var topScrim = document.querySelector('.top-scrim');
+  function heroHiddenNow(){ return heroFixed && heroFixed.classList.contains('hero-hidden'); }
+  // While the hero shows, the rail above the focused one is hidden: rows fade out over an 80px band just above
+  // where the focused rail locks (HERO_HEIGHT + 18), so nothing of the previous rail peeks out under the hero text
+  // (it ends 56px higher). A soft edge, not a hard clip. In the full-screen state the top scrim does this job.
+  function applyRowsMask(scale){
+    var m = '';
+    if(!heroHiddenNow()){
+      var end = (HERO_HEIGHT + 12) * scale, start = (HERO_HEIGHT + 12 - 80) * scale;   // 80px band
+      m = 'linear-gradient(to bottom, transparent ' + start + 'px, #000 ' + end + 'px)';
+    }
+    viewport.style.webkitMaskImage = m; viewport.style.maskImage = m;
+    if(topScrim) topScrim.classList.toggle('on', heroHiddenNow());
+  }
   var TV_RATIO = 16 / 9;
 
   function applyFrameSize(){
@@ -1337,21 +1417,40 @@
     var pinnedT = 'translateX(' + offsetX + 'px) scale(' + scale + ')';
     if(topnavFixed) topnavFixed.style.transform = pinnedT;
     if(heroFixed) heroFixed.style.transform = pinnedT;
+    if(heroBackdrop) heroBackdrop.style.transform = pinnedT;
+    if(topScrim) topScrim.style.transform = pinnedT;
+    applyRowsMask(scale);
     var scrollRealPx = stageScrollDesign * scale;
     stage.style.transform = 'translateX(' + offsetX + 'px) translateY(' + (-scrollRealPx) + 'px) scale(' + scale + ')';
   }
 
+  // Scale changes (first layout, resize, window load) are applied instantly: animating #stage from scale(1) let the
+  // first-screen check and the focus ring measure a half-scaled page, which scrolled the first rail under the hero
+  // and put the ring in the wrong place.
   function applyScale(){
     applyFrameSize();
     var scale = getScale();
     stageScrollDesign = clamp(stageScrollDesign, 0, maxScrollDesign(scale));
+    stage.style.transition = 'none';
     renderStageTransform(scale);
+    stage.offsetHeight;   // commit without a transition
+    stage.style.transition = '';
+    if(typeof placeHomeRing === 'function' && homeRingReady) placeHomeRing(true);
   }
 
   // The only way #stage ever moves: called exclusively from updateFocus()'s
   // scroll modes above, driven purely by which item currently has focus.
   // `deltaRealPx` is in the currently-rendered (post-scale) pixel space —
   // convert to design-space before accumulating.
+  // Where a row sits on screen (px from the frame's top) at the stage's TARGET scroll, from layout offsets. Reading
+  // getBoundingClientRect here measured the page mid-glide when keys were pressed quickly, so the scroll drifted
+  // and could push the focused row up under the hero.
+  function rowScreenBox(rowEl){
+    var y = 0, el = rowEl;
+    while(el && el !== stage){ y += el.offsetTop; el = el.offsetParent; }
+    var sc = getScale(), top = (y - stageScrollDesign) * sc;
+    return { top:top, bottom:top + rowEl.offsetHeight * sc, height:rowEl.offsetHeight * sc };
+  }
   function scrollStageBy(deltaRealPx){
     var scale = getScale();
     stageScrollDesign = clamp(stageScrollDesign + deltaRealPx / scale, 0, maxScrollDesign(scale));
@@ -1369,7 +1468,7 @@
   // Belt-and-suspenders: the frame already has overflow:hidden and the page
   // can't scroll, but explicitly swallow wheel/touch gestures too so no
   // trackpad, mouse wheel, or touch-drag can ever nudge the screen — the
-  // D-pad/keyboard (and the on-screen remote) are the only way to move.
+  // D-pad/keyboard are the only way to move.
   // (Mobile mode is the one exception: it's a normal touch-scrollable phone
   // mock, not the D-pad-only TV screen, so it needs real wheel/touch scroll —
   // skip the block whenever the gesture is happening inside #mobile-frame.)
@@ -1380,8 +1479,117 @@
     }, {passive:false});
   });
 
+
+  // place the ring after updateFocus has set every target (rail, page scroll, focus scale), in the same frame
+  var homeRingReady = false;
+  var updateFocusBase = updateFocus;
+  updateFocus = function(prevRow){ updateFocusBase(prevRow); placeHomeRing(); };
+
+  /* ---------------- sliding glass focus ring ---------------- */
+  // The ring lives in the tv-frame (screen pixels, above the pinned nav and hero) and chases the focused item's
+  // on-screen rect every animation frame with a short ease-out, so it glides from item to item AND stays locked to
+  // items that are themselves moving (a rail sliding, the page scrolling, the card's own scale-up).
+  var homeRingReady = true;
+  var homeRing = document.createElement('div');
+  homeRing.className = 'home-ring';
+  homeRing.setAttribute('aria-hidden', 'true');
+  homeRing.innerHTML = '<div class="glass"><i></i><i></i></div>';
+  tvFrame.appendChild(homeRing);
+  var ringLayers = homeRing.querySelectorAll('.glass i'), ringFront = 0, ringArt = null;
+  var ringCur = null, ringRaf = 0, ringLastT = 0, ringBusyUntil = 0;
+  var RING_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var RING_W = 8;   // design px
+
+  function ringTarget(){
+    var r = rows[curRow]; if(!r) return null;
+    var el = r.items[colByRow[curRow]]; if(!el) return null;
+    if(el.classList.contains('rank-wrap')) el = el.querySelector('.card') || el;   // the poster, not the numeral
+    return el;
+  }
+  // the item's artwork: its own or a descendant's background image, or an <img>
+  function artOf(el){
+    if(el.dataset.ringArt !== undefined) return el.dataset.ringArt;
+    var found = '', nodes = [el].concat(Array.prototype.slice.call(el.querySelectorAll('*'), 0, 25));
+    for(var i = 0; i < nodes.length && !found; i++){
+      var bg = getComputedStyle(nodes[i]).backgroundImage;
+      if(bg && bg.indexOf('url(') === 0) found = bg.split(')')[0] + ')';
+      else if(nodes[i].tagName === 'IMG' && nodes[i].currentSrc && nodes[i].naturalWidth > 120) found = 'url("' + nodes[i].currentSrc + '")';
+    }
+    el.dataset.ringArt = found;
+    return found;
+  }
+  // translateX / translateY values out of a transform string (the inline style holds the TARGET values; the
+  // computed style holds where a running transition is right now)
+  function tx(str){ var m = /translateX\((-?[\d.]+)px\)/.exec(str || ''); return m ? +m[1] : 0; }
+  function ty(str){ var m = /translateY\((-?[\d.]+)px\)/.exec(str || ''); return m ? +m[1] : 0; }
+  function liveTranslate(el){ var m = new DOMMatrixReadOnly(getComputedStyle(el).transform); return { x:m.m41, y:m.m42 }; }
+  // The item's rect once everything has settled: its live rect, shifted by what the rail and the page still have
+  // to travel, sized at its final focus scale (from its layout size, not mid-animation)
+  function ringRect(el){
+    var f = frameRect(), b = el.getBoundingClientRect(), sc = getScale();
+    var dx = 0, dy = 0;
+    var track = el.closest('.rail-track');
+    if(track) dx += (tx(track.style.transform) - liveTranslate(track).x / 1) * sc;
+    if(el.closest('#stage')) dy += ty(stage.style.transform) - liveTranslate(stage).y;
+    var target = el.classList.contains('card') && el.parentElement.classList.contains('rank-wrap') ? el.parentElement : el;
+    var fs = focusScale(target);
+    var w = el.offsetWidth * fs * sc, h = el.offsetHeight * fs * sc;
+    var cx = (b.left + b.right) / 2 + dx - f.left, cy = (b.top + b.bottom) / 2 + dy - f.top;
+    var o = RING_W * sc;
+    var rad = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, el.offsetHeight / 2) * sc * fs + o;
+    return { x:cx - w/2 - o, y:cy - h/2 - o, w:w + 2*o, h:h + 2*o, r:rad, pad:o };
+  }
+  // cubic-bezier(.2,0,0,1), the curve the rails, page and focus scale use
+  function ease(t){
+    var x1 = .2, y1 = 0, x2 = 0, y2 = 1, u = t;
+    for(var n = 0; n < 8; n++){
+      var xu = 3*(1-u)*(1-u)*u*x1 + 3*(1-u)*u*u*x2 + u*u*u - t;
+      var d = 3*(1-u)*(1-u)*x1 + 6*(1-u)*u*(x2-x1) + 3*u*u*(1-x2);
+      if(Math.abs(xu) < 1e-5 || !d) break;
+      u = Math.min(1, Math.max(0, u - xu / d));
+    }
+    return 3*(1-u)*(1-u)*u*y1 + 3*(1-u)*u*u*y2 + u*u*u;
+  }
+  function drawRing(c){
+    homeRing.style.width = c.w + 'px'; homeRing.style.height = c.h + 'px';
+    homeRing.style.transform = 'translate(' + c.x + 'px,' + c.y + 'px)';
+    homeRing.style.borderRadius = c.r + 'px';
+    homeRing.firstChild.style.padding = c.pad + 'px';
+  }
+  var ringFrom = null, ringTo = null, ringT0 = 0, RING_MS = 220;
+  function ringTick(t){
+    var el = ringTarget();
+    if(!el || mobileMode){ homeRing.classList.remove('on'); ringCur = null; ringRaf = 0; return; }
+    var p = RING_REDUCED || !ringFrom ? 1 : Math.min(1, (t - ringT0) / RING_MS), e = ease(p);
+    ringCur = {};
+    ['x','y','w','h','r','pad'].forEach(function(k){ ringCur[k] = ringFrom ? ringFrom[k] + (ringTo[k] - ringFrom[k]) * e : ringTo[k]; });
+    drawRing(ringCur);
+    homeRing.classList.add('on');
+    if(p < 1) ringRaf = requestAnimationFrame(ringTick);
+    else { ringRaf = 0; ringFrom = null; }
+  }
+  function placeHomeRing(snap){
+    var el = ringTarget(); if(!el) return;
+    var art = artOf(el);
+    if(art !== ringArt){
+      if(ringCur && !snap) ringFront = 1 - ringFront;
+      ringLayers[ringFront].style.setProperty('--img', art || 'linear-gradient(135deg, #9aa3b5, #5c6478)');
+      ringLayers[ringFront].style.opacity = 1;
+      ringLayers[1 - ringFront].style.opacity = 0;
+      ringArt = art;
+    }
+    // tween from wherever the ring is now (so fast presses retarget) to the item's final rect, starting this frame
+    // together with the rail / page / scale transitions that updateFocus just set
+    ringTo = ringRect(el);
+    ringFrom = (snap || !ringCur) ? null : ringCur;
+    ringT0 = performance.now();
+    if(!ringRaf) ringRaf = requestAnimationFrame(ringTick);
+  }
+  window.addEventListener('resize', function(){ placeHomeRing(true); });
+
   applyScale();
   updateFocus();
+  placeHomeRing(true);
   setTimeout(applyScale, 50);
   window.addEventListener('load', applyScale);
 
@@ -1514,6 +1722,7 @@
     } else {
       mobileFrame.hidden = true;
       tvFrame.hidden = false;
+      placeHomeRing(true);
     }
   }
 })();

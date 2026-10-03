@@ -42,7 +42,7 @@ interface Related { title: string; img: string }
 
 // Who published a short: a channel (round logo; a red ring + LIVE label while it's live) or an OTT service
 // (square logo). A channel's short gets the Favourite (heart) action, every other short gets Add (+).
-type OttBrand = "netflix" | "hbo" | "disney";
+type OttBrand = "netflix" | "hbo" | "disney" | "viu";
 interface Publisher { kind: "channel" | "ott"; name: string; logo?: string; brand?: OttBrand; live?: boolean }
 
 interface FeedItem {
@@ -64,7 +64,7 @@ interface FeedItem {
   upcoming?: boolean;   // Upcoming badge; its CTA sets a reminder instead of opening the details page
   ageRating?: string;   // e.g. "16+"
   quality?: "HD" | "4K";
-  ctaIcon: "play" | "bell";
+  ctaIcon: "play" | "bell" | "crown";   // crown: a subscription / package CTA
   title: string;
   type: string;
   genre: string;
@@ -96,7 +96,7 @@ const COOL_CHANNEL: Publisher = { kind: "channel", name: "Cool Channel", logo: `
 const frame = (path: string) => `${BASE}tv-features-test/${path}`;
 const ASIAN_GAMES_907: Publisher = { kind: "channel", name: "Asian Games 2026", logo: frame("shorts-assets/channel-907.png") };
 const ASIAN_GAMES_909: Publisher = { kind: "channel", name: "Asian Games 2026", logo: frame("shorts-assets/channel-909.png") };
-const CH3: Publisher = { kind: "channel", name: "Channel 3", logo: frame("shorts-assets/ch3.png") };
+const VIU: Publisher = { kind: "ott", name: "Viu", brand: "viu", logo: frame("shorts-assets/viu.png") };
 
 // ─── Feed Data ────────────────────────────────────────────
 // Live, highlights (sport, music, movie/series) and promos. Shorts without their own video yet show a still.
@@ -223,18 +223,18 @@ const FEED: FeedItem[] = [
   },
   {
     id: 6,
-    publisher: { ...CH3, live: true },
+    publisher: VIU,
     video: CONCERT, start: 150, length: 30,
     title: "Love Language — Dance Break",
-    summary: "The dance break, live on Channel 3.",
-    ctaIcon: "play",
+    summary: "The dance break, now streaming on Viu.",
+    ctaIcon: "crown",
     type: "Concert", genre: "Music · Live",
-    badge: "LIVE",
-    duration: "LIVE · Music Bank", rating: "G",
-    synopsis: "TOMORROW X TOGETHER live on Channel 3. Watch the dance break as it happens, or open Multi-View to follow your favourite member.",
+    badge: "Trending",
+    duration: "Music Bank · 3m", rating: "G",
+    synopsis: "TOMORROW X TOGETHER's Love Language dance break, streaming on Viu. Subscribe to a Viu package to watch the full stage and every episode.",
     cast: ["Soobin", "Yeonjun", "Beomgyu", "Taehyun", "Hueningkai"],
     img: frame("concert-assets/moment-150.jpg"),
-    cta: "Watch Live", live: true, accent: "#EA5454",
+    cta: "Subscription", live: false, accent: "#EA5454",
     related: [
       { title: "Chorus", img: frame("concert-assets/moment-080.jpg") },
       { title: "Close-up", img: frame("concert-assets/moment-120.jpg") },
@@ -1080,7 +1080,9 @@ function FeedCard({
               className="w-full h-10 px-3 rounded-[8px] flex items-center justify-center gap-2"
               style={{ background: "#e7e7e7" }}
             >
-              {item.ctaIcon === "bell"
+              {item.ctaIcon === "crown"
+                ? <img src={iconCrown} alt="" className="w-4 h-4 block" />
+                : item.ctaIcon === "bell"
                 ? (reminded ? <Check size={16} strokeWidth={2.5} className="text-[#282828]" /> : <img src={iconBell} alt="" className="w-4 h-4 block" />)
                 : <Play size={16} fill="#282828" className="text-[#282828]" />}
               <span className="text-[14px] font-bold leading-normal" style={{ color: "#282828", fontFamily: "'Open Sans'" }}>{item.upcoming && reminded ? "Reminder Set" : item.cta}</span>
@@ -1189,12 +1191,12 @@ function Summary({ text, active }: { text: string; active: boolean }) {
       <p ref={measure} aria-hidden className={`${body} absolute left-0 right-0 top-0 invisible pointer-events-none`} />
       {open ? (
         <div className="max-h-[40vh] overflow-y-auto" style={{ scrollbarWidth: "none" }} onPointerDown={e => e.stopPropagation()}>
-          <p className={`${body} whitespace-pre-line`} style={{ color: "#a8a8a8" }}>
+          <p className={`${body} whitespace-pre-line`} style={{ color: "#d9d9d9" }}>
             {text} <button {...linkProps}>Show less</button>
           </p>
         </div>
       ) : (
-        <p className={`${body} line-clamp-2`} style={{ color: "#a8a8a8" }}>
+        <p className={`${body} line-clamp-2`} style={{ color: "#d9d9d9" }}>
           {cut === null ? text : <>{text.slice(0, cut).replace(/[\s—–\-,;:·]+$/, "")}… <button {...linkProps}>Read more</button></>}
         </p>
       )}
@@ -1205,7 +1207,11 @@ function Summary({ text, active }: { text: string; active: boolean }) {
 // The publisher's logo on the right of a short: a channel is round (a red ring and LIVE label while it's live),
 // an OTT service square
 function ProfileLogo({ publisher }: { publisher: Publisher }) {
-  if (publisher.kind === "ott") return <OttLogo brand={publisher.brand!} />;
+  if (publisher.kind === "ott") {
+    return publisher.logo
+      ? <img src={publisher.logo} alt="" className="w-12 h-12 rounded-[8px] object-cover block" />
+      : <OttLogo brand={publisher.brand!} />;
+  }
   if (!publisher.live) {
     return <img src={publisher.logo} alt="" className="w-12 h-12 rounded-full object-cover block bg-white" />;
   }
