@@ -185,7 +185,7 @@
   body.fluid .card b{ font-size:clamp(20px, 3.4vw, 28px); }
   body.fluid .card span.desc{ font-size:clamp(13px, 2vw, 16px); }
   body.fluid .focused{ transform:scale(1.05); }
-  body.fluid #grid{ position:relative; }   /* the ring is placed inside the grid, so it scrolls with the cards */
+  body.fluid #grid{ position:relative; top:auto; left:auto; }   /* the ring is placed inside the grid, so it scrolls with the cards; top/left: drop the desktop offsets, which position:relative would otherwise apply */
   body.fluid .focus-ring{ --gap:0px; --w:5px; }
   body.fluid footer{ margin-top:36px; }
   body.fluid .hints{ gap:20px; font-size:14px; flex-wrap:wrap; justify-content:center; }
