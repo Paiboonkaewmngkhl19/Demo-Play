@@ -200,11 +200,11 @@
   .hero-content{
     position:relative;z-index:1;
     padding:84px 0 0 110px;
-    max-width:820px;
+    max-width:1100px;   /* room for a title on one line; the description keeps its own 760px */
     transition:opacity .25s ease;
   }
   .hero-title{
-    font-size:72px;font-weight:700;line-height:1.08;letter-spacing:-.01em;max-width:760px;
+    font-size:72px;font-weight:700;line-height:1.08;letter-spacing:-.01em;max-width:1080px;
     text-shadow:0 2px 12px rgba(0,0,0,.35);
     margin:0 0 26px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
@@ -219,7 +219,7 @@
     padding:8px 14px;font-size:20px;white-space:nowrap;
   }
   .badge-live .dot{width:9px;height:9px;border-radius:999px;background:#fff;}
-  .hero-desc{font-size:26px;line-height:1.4;opacity:.82;max-width:760px;text-shadow:0 0 6px rgba(0,0,0,.6);}
+  .hero-desc{font-size:26px;line-height:1.4;opacity:.82;max-width:760px;white-space:pre-line;text-shadow:0 0 6px rgba(0,0,0,.6);}
 
   /* ---------- Generic row / rail ---------- */
   .row-block{position:relative;z-index:2;padding:0 0 56px;}   /* 56px from one rail to the next */
@@ -330,8 +330,8 @@
     background:rgba(255,255,255,.15);box-shadow:inset -1px 3px 17px rgba(255,255,255,.16);
     flex:0 0 auto;
   }
-  .epg-countdown b{font-size:23px;font-weight:700;}
-  .epg-countdown span{font-size:19px;opacity:.9;}
+  .epg-countdown b{font-size:28px;font-weight:700;}
+  .epg-countdown span{font-size:22px;font-weight:400;opacity:.9;}
   .epg-card{width:340px;border-radius:20px;overflow:hidden;background:rgba(82,82,82,0.7);flex:0 0 auto;display:flex;flex-direction:column;}
   .epg-now{background:#404040;padding:22px 18px 16px;display:flex;flex-direction:column;gap:12px;position:relative;}
   .epg-avatar{width:64px;height:64px;object-fit:cover;display:block;}
@@ -340,15 +340,37 @@
   .epg-title{font-size:19px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:1px 1px 2px rgba(0,0,0,.7);}
   .epg-sub{font-size:15px;opacity:.9;text-shadow:1px 1px 2px rgba(0,0,0,.7);}
   .epg-heart{position:absolute;right:16px;top:16px;opacity:.85;}
-  .epg-heart img{width:18px;height:18px;object-fit:contain;display:block;}
+  .epg-heart img{width:24px;height:24px;object-fit:contain;display:block;}
   .epg-next{background:#525252;padding:20px 18px;display:flex;flex-direction:column;gap:6px;flex:1;}   /* fills the card to its bottom edge (the rail stretches cards to 280px) */
+
+  /* hot channels: 160px round avatars; a live channel gets a 4px red ring and a LIVE label hanging off the bottom */
+  .channel-row .rail-track{gap:24px;align-items:flex-start;padding-bottom:28px;}
+  .chan-avatar{position:relative;width:160px;height:160px;border-radius:80px;flex:0 0 auto;}   /* px, so the focus ring rounds to a circle too */
+  .chan-disc{position:absolute;inset:0;border-radius:50%;overflow:hidden;}
+  .chan-disc img{position:absolute;display:block;max-width:none;}
+  .chan-avatar.live .chan-disc, .chan-avatar.tagged .chan-disc{inset:8px;}
+  .chan-avatar.live::before, .chan-avatar.tagged::before{content:'';position:absolute;inset:0;border:4px solid var(--chan-ring,#f00);border-radius:50%;}
+  /* Figma "Hot" (pink) and "New" (lime) channels: same ring + label as LIVE, in their own colour, no animation */
+  .chan-avatar.tag-hot{--chan-ring:#e7007e;}
+  .chan-avatar.tag-new{--chan-ring:#b8f416;}
+  .chan-live.chan-tag-hot{background:linear-gradient(90deg,#e7007e,#ff048d 50%,#ff3aa6);}
+  .chan-live.chan-tag-new{background:#b8f416;color:#111;}
+  /* TikTok-style live: the red ring stays still; the logo breathes and a second ring ripples outward and fades, on a loop */
+  .chan-avatar.live::after{content:'';position:absolute;inset:0;border:3px solid #f00;border-radius:50%;pointer-events:none;
+    animation:chanRipple 1.4s ease-out infinite;}
+  .chan-avatar.live .chan-disc{animation:chanBreathe 1.4s ease-in-out infinite;}
+  @keyframes chanBreathe{ 0%,100%{transform:scale(1);} 50%{transform:scale(.94);} }
+  @keyframes chanRipple{ 0%{transform:scale(.96);opacity:.9;} 100%{transform:scale(1.22);opacity:0;} }
+  @media (prefers-reduced-motion: reduce){ .chan-avatar.live::after, .chan-avatar.live .chan-disc{animation:none;} }
+  .chan-live{position:absolute;left:36px;top:146px;width:88px;height:40px;background:#f00;border-radius:2px;
+    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:600;letter-spacing:-.24px;color:#fff;z-index:2;}
 
   /* partner */
   .partner-row .rail-track{align-items:center;}
   .partner-allapps{
     width:230px;height:111px;box-sizing:border-box;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:6px;   /* same size as the logo tiles */
     background:rgba(255,255,255,.14);box-shadow:inset -1px 3px 16px rgba(255,255,255,.16);
-    font-size:18px;flex:0 0 auto;
+    font-size:28px;font-weight:700;flex:0 0 auto;
   }
   .partner-logo-tile{ width:230px !important; height:111px !important; border-radius:8px; overflow:hidden; background:#000; }
   .partner-logo-tile img{ width:100%; height:100%; object-fit:cover; display:block; }
@@ -398,8 +420,9 @@
   .personalize h3{font-size:50px;font-weight:600;line-height:1.2;margin:0;white-space:nowrap;}
   .btn-customize{
     width:300px;height:80px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(ellipse 260px 150px at 12% 90%, rgba(165,139,212,.24) 6%, rgba(165,139,212,.6) 100%);
-    box-shadow:inset -1px 3px 16px rgba(255,255,255,.16);
+    background:radial-gradient(ellipse 260px 150px at 12% 90%, rgba(185,160,230,.4) 6%, rgba(185,160,230,.78) 100%);
+    box-shadow:inset -1px 3px 16px rgba(255,255,255,.28), 0 0 24px rgba(185,160,230,.35);
+    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);   /* frosted: blurs the posters behind it */
     font-size:36px;font-weight:400;line-height:1.2;
   }
 
@@ -422,6 +445,15 @@
   /* The wide feature card grows (width × 5%)/2 = 31px past each side when focused, more than the 32px rail gap, so give
      it extra room on the right: growth + 8px ring + 24px clear before the next card. */
   .toppick-row .hero-pick{margin-right:31px;}
+  /* Top Pick expanding cards: a 482px portrait poster at rest; focused, the 1240px feature card */
+  .tp-card .tp-portrait, .tp-card .tp-wide{position:absolute;inset:0;background-size:cover;background-position:center;transition:opacity .25s ease;}
+  .tp-card:not(.focused){width:482px;border-radius:12px;margin-right:0;}
+  .tp-card:not(.focused) .tp-wide, .tp-card:not(.focused) .scrim, .tp-card:not(.focused) .content{opacity:0;}
+  .tp-card.focused .tp-portrait{opacity:0;}
+  .ex-tp:not(.focused){width:437px;border-radius:17px;}   /* AIS Play Exclusive posters are 437px wide */
+  /* the focused feature card grows 31px past each side, so make room on its left too (the right already has it) */
+  .tp-card.focused:not(:first-child){margin-left:31px;}
+  .tp-card .scrim, .tp-card .content{transition:opacity .25s ease .05s;}
   .ad-banner.item.focused,.personalize.item.focused{transform:scale(1.0);}
 
   /* ---------- Sliding "glass" focus ring (same as the Choose a Demo page) ----------
@@ -812,7 +844,7 @@
      is focused here updates the hero background/title/description. */
   (function(){
     var items = [
-      {img:'liver-ben.jpg', badge:'Live',
+      {img:'liver-ben.jpg', badge:'Live', plat:'monomax',
         hero:{title:'Liverpool vs Brentford', logo:'MONOMAX', channel:'Channel 501: Monomax1', live:true,
           desc:"Liverpool host Brentford at Anfield in a big Premier League clash. Follow every moment live, from kick-off to the final whistle."}},
       {img:'loki.jpg', plat:'disney',
@@ -833,11 +865,11 @@
       {img:'how-to-train.jpg', plat:'netflix',
         hero:{title:'How to Train Your Dragon', logo:'NETFLIX', channel:'Movie · 1 hr 44 min', live:false,
           desc:"A young Viking forms an unlikely friendship with a dragon, challenging his tribe's deep-rooted fear of the creatures."}},
-      {img:'arsenal.jpg', badge:'Live',
+      {img:'arsenal.jpg', badge:'Live', plat:'monomax',
         hero:{title:'Arsenal vs Chelsea', logo:'MONOMAX', channel:'Channel 502: Monomax2', live:true,
           desc:'A fierce London derby as Arsenal host Chelsea in a top-of-the-table Premier League showdown.'}},
-      {img:'f1.jpg', plat:'disney',
-        hero:{title:'F1: The Movie', logo:'DISNEY+', channel:'Movie · 2 hr 35 min', live:false,
+      {img:'f1.jpg', plat:'prime',
+        hero:{title:'F1: The Movie', logo:'PRIME VIDEO', channel:'Movie · 2 hr 35 min', live:false,
           desc:'A once-promising Formula 1 driver returns to mentor a young rookie and chase one last shot at glory.'}}
     ];
     HERO_ITEMS = items;
@@ -938,6 +970,33 @@
     })});
   })();
 
+  /* ---------- Row: Hot Channels (Figma "Hot channel": round 160px channel avatars) ---------- */
+  (function(){
+    // img box: [left, top, width, height] in % of the circle (Figma's crop), or null to cover it
+    var chans = [
+      {t:'Asian Games 2026 · 902', src:'tv-features-test/live-stream-assets/channel-asian-games.png', bg:'#fff', live:true},   // same logos as the Clips/Reels demo
+      {t:'Asian Games 2026 · 907', src:'tv-features-test/shorts-assets/channel-907.png', bg:'#fff', live:true},
+      {t:'PLAY Sports 61', img:'playsports.png', bg:'#404045', live:true},
+      {t:'Warner TV', img:'wbtv.png', bg:'#fff', box:[10.88,12.81,80.09,74.91], tag:'hot'},
+      {t:'HBO', img:'hbo.png', bg:'#fff', tag:'hot'},
+      {t:'HBO Hits', img:'hbohits.png', bg:'#fff', box:[0,17.28,95.67,65.54], tag:'new'},
+      {t:'HBO Family', img:'hbofamily.png', bg:'#fff', box:[-0.11,22.3,108.43,66.07]},
+      {t:'HBO Signature', img:'hbosignature.png', bg:'#fff', box:[-17.36,23.71,114.25,52.53]},
+      {t:'Cinemax', img:'cinemax.png', bg:'#fff', box:[5.54,25.24,88.79,50]},
+      {t:'Rock Entertainment', img:'rock.png', bg:'#fff', box:[-11.46,24.55,120.21,51.94]}
+    ];
+    var html = chans.map(function(c){
+      var b = c.box, st = b ? 'left:'+b[0]+'%;top:'+b[1]+'%;width:'+b[2]+'%;height:'+b[3]+'%;' : 'inset:0;width:100%;height:100%;object-fit:cover;';
+      return '<div class="chan-avatar item'+(c.live?' live':'')+(c.tag?' tagged tag-'+c.tag:'')+'" data-title="'+c.t+'">'+
+        '<div class="chan-disc" style="background:'+c.bg+';"><img src="'+(c.src || 'icons/channels/'+c.img)+'" alt="'+c.t+'" style="'+st+'"></div>'+
+        (c.live ? '<span class="chan-live">LIVE</span>' : '')+
+        (c.tag ? '<span class="chan-live chan-tag-'+c.tag+'">'+(c.tag === 'hot' ? 'Hot' : 'New')+'</span>' : '')+
+      '</div>';
+    }).join('');
+    addRow('<div class="row-block channel-row"><div class="row-title">Hot Channels</div><div class="rail-viewport"><div class="rail-track">'+html+'</div></div></div>');
+    MOBILE_ROWS.push({title:'Hot Channels', type:'chip', items: chans.map(function(c){ return {t:c.t}; })});
+  })();
+
   /* ---------- Row: Partner / All Apps ---------- */
   (function(){
     var apps = ['NETFLIX','HBO MAX','PRIME VIDEO','DISNEY+','VIU','WeTV','YouTube','Monomax','iQIYI','TrueID'];
@@ -963,14 +1022,16 @@
   /* ---------- Generic poster rail helper ---------- */
   function posterRail(title, items, paletteStart){
     var cards = items.map(function(it,i){
-      return '<div class="card card-poster item" data-title="'+it.t+'" style="'+posterStylePortrait()+'">'+
+      var pool = posterStylePortrait();
+      return '<div class="card card-poster item" data-title="'+it.t+'" style="'+(it.img ? "background-image:url('"+it.img+"');background-size:cover;background-position:center;" : pool)+'"'+(it.d ? ' data-desc="'+it.d+'"' : '')+'>'+
         (it.plat?platformPill(it.plat):'')+
         (it.badge?'<span class="card-badge-corner" style="left:auto;right:0;top:0;border-radius:0 9px 0 9px;">'+it.badge+'</span>':'')+
       '</div>';
     }).join('');
     addRow('<div class="row-block"><div class="row-title">'+title+'</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
     MOBILE_ROWS.push({title:title, type:'poster', items: items.map(function(it){
-      return {t:it.t, plat:it.plat, badge:it.badge, img:nextPortraitUrl()};
+      var pool = nextPortraitUrl();
+      return {t:it.t, plat:it.plat, badge:it.badge, img:it.img || pool};
     })});
   }
 
@@ -981,12 +1042,9 @@
     {t:'Action feature', plat:'prime'},
     {t:'Family feature', plat:'disney'},
     {t:'Drama feature', plat:'netflix'},
-    {t:'Thriller feature', plat:'netflix'},
-    {t:'Comedy feature', plat:'viu'},
-    {t:'Sci-fi feature', plat:'hbo'},
-    {t:'Animated feature', plat:'disney'},
-    {t:'Romance feature', plat:'prime'}
+    {t:'Thriller feature', plat:'netflix'}
   ], 1);
+  _portraitCursor += 8;   // the 4 removed cards (+ their mobile copies) used to take pool posters; keep later rows unchanged
 
   /* ---------- Row: Live and Upcoming ---------- */
   (function(){
@@ -1026,7 +1084,17 @@
   (function(){
     var titles = ['Netflix pick #1','Disney pick #2','Netflix pick #3','Disney pick #4','Netflix pick #5','Prime pick #6','HBO pick #7','Viu pick #8','Netflix pick #9'];
     var plats = ['netflix','disney','netflix','disney','netflix','prime','hbo','viu','netflix'];
+    // #8 and #9: fixed titles (the pool supplies the rest); the pool still advances so later rows keep their posters
+    var TOP10_ART = {
+      7:{t:'Thai Lawyer', img:'posters_portrait/legal/l1.jpg', plat:'netflix', d:'A ruthless Bangkok lawyer will defend anyone for the right price, until one case turns personal.'},
+      8:{t:'The Lord of the Rings: The Return of the King', img:'posters_portrait/lotr/r1.jpg', plat:'disney', d:'Gandalf and Aragorn lead the World of Men against Sauron\'s army as Frodo and Sam near Mount Doom.'}
+    };
+    function rankArt(i){
+      var pool = posterStylePortrait(), a = TOP10_ART[i];
+      return a ? "background-image:url('"+a.img+"');background-size:cover;background-position:center;" : pool;
+    }
     var cards = titles.map(function(t,i){
+      if(TOP10_ART[i]) t = TOP10_ART[i].t;
       return '<div class="rank-wrap item" data-title="#'+(i+1)+' '+t+'">'+
         // The font builds some digits from overlapping contours, so a plain stroke shows seams inside the "3" etc.
         // Instead: a 0.6px stroke masked to outside the filled glyph, leaving a clean 0.3px outer outline.
@@ -1037,12 +1105,12 @@
           '<text font-family="Plus Jakarta Sans" font-weight="800" fill="url(#rankNumFill)">'+(i+1)+'</text>'+
           '<text font-family="Plus Jakarta Sans" font-weight="800" fill="none" stroke="#fff" stroke-width="0.6" mask="url(#rankMask'+(i+1)+')">'+(i+1)+'</text>'+
         '</svg>'+
-        '<div class="card card-poster" style="width:245px;height:338px;'+posterStylePortrait()+'">'+platformPill(plats[i])+'</div>'+
+        '<div class="card card-poster" style="width:245px;height:338px;'+rankArt(i)+'"'+(TOP10_ART[i] ? ' data-desc="'+TOP10_ART[i].d+'"' : '')+'>'+platformPill(TOP10_ART[i] ? TOP10_ART[i].plat : plats[i])+'</div>'+
       '</div>';
     }).join('');
     addRow('<div class="row-block">'+
       '<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="rankNumFill" x1="0" y1="0" x2="0" y2="1">'+
-        '<stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></linearGradient></defs></svg>'+
+        '<stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient></defs></svg>'+
       '<div class="row-title">Top 10 in Thailand Today</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
     function layoutRankNums(){
       var ctx = document.createElement('canvas').getContext('2d');
@@ -1068,34 +1136,65 @@
       try{ placeHomeRing(true); }catch(e){}
     });
     MOBILE_ROWS.push({title:'Top 10 in Thailand Today', type:'rank', items: titles.map(function(t,i){
-      return {t:t, rank:i+1, plat:plats[i], img:nextPortraitUrl()};
+      var pool = nextPortraitUrl(), a = TOP10_ART[i];
+      return {t:a ? a.t : t, rank:i+1, plat:a ? a.plat : plats[i], img:a ? a.img : pool};
     })});
   })();
 
   /* ---------- Row: Top Pick For You ---------- */
   (function(){
-    var heroCard = '<div class="card hero-pick item" data-title="Game of Thrones: House of the Dragon" style="background-image:url(\'posters/house-of-the-dragon.jpg\');background-size:cover;background-position:center;">'+
-      '<div class="scrim"></div>'+
-      '<div class="content">'+
-        '<div class="top-badges"><span class="pill-rank">#1 in thailand</span><span class="badge-live"><span class="dot"></span>Live</span></div>'+
-        '<h3>Game of Thrones: House of the Dragon</h3>'+
-        '<p class="desc">Set 200 years before the events of Game of Thrones, this epic series tells the story of House Targaryen.</p>'+
-        '<div class="chanrow"><img class="chan-tag-logo" src="badges/tag-hbo.png" alt="HBO Max"><span class="catchip">3 Seasons, 26 Episodes</span><span class="catchip">Action, Sci-fi</span><span class="catchip">PG-15+</span></div>'+
-      '</div>'+
-    '</div>';
-    var posters = ['Prime Video pick','HBO Max pick','Disney+ pick','Netflix pick','Viu pick','Monomax pick'].map(function(t,i){
-      return '<div class="card" style="width:482px;height:654px;border-radius:12px;'+posterStylePortrait()+'" data-title="'+t+'"></div>';
-    });
+    // Expanding cards: each sits as a portrait poster and, when focused, widens into the 1240px feature card
+    // (a wide crop of its artwork + badges, title, synopsis, provider tag and chips)
+    var picks = [
+      {t:'Game of Thrones: House of the Dragon', portrait:'posters_portrait/House.jpg', wide:'posters/house-of-the-dragon.jpg', pos:'center',
+        badges:['#1 in thailand'], live:true, tag:'hbo', chips:['3 Seasons, 26 Episodes','Action, Sci-fi','PG-15+'],
+        d:'Set 200 years before the events of Game of Thrones, this epic series tells the story of House Targaryen.'},
+      {t:'The Debt Collector', portrait:'posters_portrait/debt.jpg', wide:'posters_portrait/debt.jpg', pos:'center 22%',
+        badges:['New Arrival'], tag:'netflix', chips:['1 hr. 48 min','Action, Thriller','R-18+'],
+        d:'A debt collector with a violent past takes one last job that drags him back into Bangkok\'s underworld.'},
+      {t:'Top Gun: Maverick', portrait:'posters_portrait/topgun_m.jpg', wide:'posters/topgun-m.jpg', pos:'center 30%',
+        badges:['#2 in thailand'], tag:'hbo', chips:['2 hr. 11 min','Action, Drama','PG-13+'],
+        d:'After thirty years of service, Maverick trains a new generation of Top Gun graduates for a dangerous mission.'},
+      {t:'F1: The Movie', portrait:'posters_portrait/F1.jpg', wide:'posters/f1.jpg', pos:'center 30%',
+        badges:['Trending'], tag:'prime', chips:['2 hr. 35 min','Sport, Drama','PG-13+'],
+        d:'A once-promising Formula 1 driver returns to mentor a young rookie and chase one last shot at glory.'},
+      {t:'John Wick: Chapter 4', portrait:'posters_portrait/John.jpg', wide:'posters_portrait/John.jpg', pos:'center 35%',
+        badges:['Top 10'], tag:'netflix', chips:['2 hr. 49 min','Action, Crime','R-18+'],
+        d:'John Wick uncovers a path to defeating the High Table, but must face a powerful new enemy first.'},
+      {t:'Venom: Let There Be Carnage', portrait:'posters_portrait/Venom.jpg', wide:'posters_portrait/Venom.jpg', pos:'center 35%',
+        badges:['Popular'], tag:'netflix', chips:['1 hr. 37 min','Action, Sci-fi','PG-13+'],
+        d:'Eddie Brock and Venom face Cletus Kasady, a serial killer who becomes host to the symbiote Carnage.'},
+      {t:'Avatar: Fire and Ash', portrait:'posters_portrait/avatar.jpg', wide:'posters_portrait/avatar.jpg', pos:'center 30%',
+        badges:['Coming Soon'], tag:'disney', chips:['3 hr. 12 min','Adventure, Sci-fi','PG-13+'],
+        d:'Jake and Neytiri\'s family meet the Ash People, a fierce Na\'vi clan, in a new chapter on Pandora.'}
+    ];
+    // the filled square behind each tag logo takes the logo's own background colour
+    var TAG_FILL = {netflix:'#000', hbo:'#000', prime:'#1a98ff', disney:'#052538', viu:'#ffbf00'};
+    var cards = picks.map(function(it){
+      return '<div class="card hero-pick tp-card item" data-title="'+it.t+'" data-ring-art="url(&quot;'+it.wide+'&quot;)">'+
+        '<div class="tp-portrait" style="background-image:url(\''+it.portrait+'\');"></div>'+
+        '<div class="tp-wide" style="background-image:url(\''+it.wide+'\');background-position:'+it.pos+';"></div>'+
+        '<div class="scrim"></div>'+
+        '<div class="content">'+
+          '<div class="top-badges">'+it.badges.map(function(b){ return '<span class="pill-rank">'+b+'</span>'; }).join('')+
+            (it.live ? '<span class="badge-live"><span class="dot"></span>Live</span>' : '')+'</div>'+
+          '<h3>'+it.t+'</h3>'+
+          '<p class="desc">'+it.d+'</p>'+
+          '<div class="chanrow"><img class="chan-tag-logo" src="badges/tag-'+it.tag+'.png" alt="'+it.tag+'" style="background:'+TAG_FILL[it.tag]+';">'+
+            it.chips.map(function(c){ return '<span class="catchip">'+c+'</span>'; }).join('')+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
     addRow('<div class="row-block toppick-row"><div class="row-title">Top Pick For You</div><div class="rail-viewport"><div class="rail-track">'+
-      heroCard +
-      posters.map(function(h){return h.replace('<div class="card"','<div class="card item"');}).join('') +
+      cards +
     '</div></div></div>');
     MOBILE_ROWS.push({title:'Top Pick For You', type:'mixed', items: [
       {kind:'editorial', t:'Game of Thrones: House of the Dragon', sub:'HBO MAX', img:'posters/house-of-the-dragon.jpg', live:true,
         desc:'Set 200 years before the events of Game of Thrones, this epic series tells the story of House Targaryen.'}
-    ].concat(['Prime Video pick','HBO Max pick','Disney+ pick','Netflix pick','Viu pick','Monomax pick'].map(function(t){
-      return {kind:'poster', t:t, img:nextPortraitUrl()};
+    ].concat(picks.slice(1).map(function(it){
+      return {kind:'poster', t:it.t, img:it.portrait};
     }))});
+    _portraitCursor += 12;   // this row used to take 12 pool posters (6 cards + 6 mobile); keep later rows' posters unchanged
   })();
 
   /* ---------- Row: Watch List (landscape) ---------- */
@@ -1122,44 +1221,70 @@
   })();
 
   posterRail('Anti-Hero Legal Drama', [
-    {t:'Legal drama 1', plat:'netflix'}, {t:'Legal drama 2', plat:'disney'},
-    {t:'Legal drama 3', plat:'disney'}, {t:'Legal drama 4', plat:'disney'},
-    {t:'Legal drama 5', plat:'netflix'}, {t:'Legal drama 6', plat:'netflix'},
-    {t:'Legal drama 7', plat:'netflix'}, {t:'Legal drama 8', plat:'viu'},
-    {t:'Legal drama 9', plat:'hbo'}, {t:'Legal drama 10', plat:'prime'},
-    {t:'Legal drama 11', plat:'netflix'}, {t:'Legal drama 12', plat:'disney'}
+    {t:'Thai Lawyer', plat:'netflix', img:'posters_portrait/legal/l1.jpg', d:'A ruthless Bangkok lawyer will defend anyone for the right price, until one case turns personal.'},
+    {t:'One Dollar Lawyer', plat:'disney', img:'posters_portrait/legal/l2.jpg', d:'A genius lawyer who charges just one dollar takes on the powerful on behalf of people with nothing.'},
+    {t:'The Judge from Hell', plat:'disney', img:'posters_portrait/legal/l3.jpg', d:'A demon possesses a judge and starts sentencing criminals who escape justice to a punishment of her own.'},
+    {t:'Big Mouth', plat:'disney', img:'posters_portrait/legal/l4.jpg', d:'A small-time lawyer is mistaken for a criminal mastermind and must survive a prison full of enemies.'},
+    {t:'A Model Family', plat:'netflix', img:'posters_portrait/legal/l5.jpg', d:'A broke professor finds a car full of drug money and is dragged into a war between cartels.'},
+    {t:'Vincenzo', plat:'netflix', img:'posters_portrait/legal/l6.jpg', d:'A Mafia consigliere returns to Seoul and uses his own methods to take down a corrupt conglomerate.'},
+    {t:'Lawless Lawyer', plat:'netflix', img:'posters_portrait/legal/l7.jpg', d:'A former gangster turned lawyer fights a corrupt judge and the city she controls.'},
+    {t:'Again My Life', plat:'viu', img:'posters_portrait/legal/l8.jpg', d:'A prosecutor killed by a powerful politician gets a second chance at life to bring him down.'}
   ], 3);
+  _portraitCursor += 8;   // this rail lost 4 cards (+ their mobile copies); keep later rows' posters unchanged
 
   posterRail('Because You Watched “The Lord of the Rings: The Fellowship of the Ring”', [
-    {t:'Fantasy pick 1', plat:'disney'}, {t:'Fantasy pick 2', plat:'disney'},
-    {t:'Fantasy pick 3', plat:'disney'}, {t:'Fantasy pick 4', plat:'disney'},
-    {t:'Fantasy pick 5', plat:'disney'}, {t:'Fantasy pick 6', plat:'disney'},
-    {t:'Fantasy pick 7', plat:'disney'}, {t:'Fantasy pick 8', plat:'disney'},
-    {t:'Fantasy pick 9', plat:'hbo'}, {t:'Fantasy pick 10', plat:'netflix'},
-    {t:'Fantasy pick 11', plat:'prime'}, {t:'Fantasy pick 12', plat:'viu'}
+    {t:'The Lord of the Rings: The Return of the King', plat:'disney', img:'posters_portrait/lotr/r1.jpg', d:'Gandalf and Aragorn lead the World of Men against Sauron\'s army as Frodo and Sam near Mount Doom.'},
+    {t:'The Lord of the Rings: The Two Towers', plat:'disney', img:'posters_portrait/lotr/r2.jpg', d:'The Fellowship is broken, but its members fight on to defend Middle-earth against Saruman and Sauron.'},
+    {t:'The Hobbit: The Battle of the Five Armies', plat:'disney', img:'posters_portrait/lotr/r3.jpg', d:'Bilbo and the dwarves are caught in a battle of five armies over the treasure of the Lonely Mountain.'},
+    {t:'The Hobbit: The Desolation of Smaug', plat:'disney', img:'posters_portrait/lotr/r4.jpg', d:'Bilbo, Gandalf and the dwarves press on toward Erebor, where the dragon Smaug guards a lost kingdom.'},
+    {t:'The Last Kingdom', plat:'disney', img:'posters_portrait/lotr/r5.jpg', d:'Born a Saxon and raised by Danes, Uhtred fights to reclaim his birthright as England is forged.'},
+    {t:'Vikings', plat:'disney', img:'posters_portrait/lotr/r6.jpg', d:'Farmer Ragnar Lothbrok rises to become a legendary Viking king, raiding the lands to the west.'},
+    {t:'Game of Thrones', plat:'disney', img:'posters_portrait/lotr/r7.jpg', d:'Noble families fight for control of the Iron Throne while an ancient enemy returns in the north.'}
   ], 5);
+  _portraitCursor += 10;   // this rail lost 5 cards (+ their mobile copies); keep later rows' posters unchanged
 
   /* ---------- Row: AIS Play Exclusive ---------- */
   (function(){
-    var heroCard = '<div class="card hero-pick item" data-title="Miss Universe Thailand 2026">'+
-      '<img class="bg" src="posters/miss-universe.jpg" alt="" style="width:100%;height:100%;object-fit:cover;">'+
-      '<div class="scrim"></div>'+
-      '<div class="content">'+
-        '<div class="top-badges"><span class="pill-rank">#1 in thailand</span></div>'+
-        '<h3>Miss Universe Thailand 2026</h3>'+
-        '<p class="desc">The Miss Universe Thailand 2026 pageant is underway with provincial preliminaries and delegate selections, highlighted by Tharina Botes winning Miss Universe Krung Thep Maha Nakhon (Bangkok).</p>'+
-        '<div class="chanrow"><span class="chanlogo"><img src="icons/crown-gold.svg" alt="" style="width:18px;height:18px;object-fit:contain;margin-right:6px;">Premium</span><span class="catchip">1 hr. 55 min</span><span class="catchip">Action, Sci-fi</span><span class="catchip">PG-15+</span></div>'+
-      '</div>'+
-    '</div>';
-    var portraits = ['D-Day Rerun','BossCKM Dream Warrior','Man City vs Arsenal','Match Day: Man Utd vs Chelsea','Match Day: Man Utd vs Arsenal'];
-    var cards = portraits.map(function(t,i){
-      return '<div class="portrait-card exclusive-card item" data-title="'+t+'"><img src="posters_portrait/ex'+(i+1)+'.jpg" alt="'+t+'"></div>';
+    // Expanding cards, like Top Pick For You: portrait posters that widen into the feature card when focused
+    var PREMIUM = '<span class="chanlogo"><img src="icons/crown-gold.svg" alt="" style="width:18px;height:18px;object-fit:contain;margin-right:6px;">Premium</span>';
+    var picks = [
+      {t:'Miss Universe Thailand 2026', portrait:'posters/miss-universe.jpg', ppos:'30% center', wide:'posters/miss-universe.jpg', pos:'center',
+        badges:['#1 in thailand'], chips:['1 hr. 55 min','Pageant, Live Event','G'],
+        d:'The Miss Universe Thailand 2026 pageant is underway with provincial preliminaries and delegate selections, highlighted by Tharina Botes winning Miss Universe Krung Thep Maha Nakhon (Bangkok).'},
+      {t:'Happy Boss Day: The Sophomores – D-Day', portrait:'posters_portrait/ex1.jpg', wide:'posters_portrait/ex1.jpg', pos:'center 62%',
+        badges:['Rerun'], chips:['2 hr. 30 min','Concert','G'],
+        d:'Relive The Sophomores\' sold-out D-Day concert, exclusively on AIS PLAY. Rerun from 1 February to 30 April 2026.'},
+      {t:'BossCKM: Dream Warrior Concert', portrait:'posters_portrait/ex2.jpg', wide:'posters_portrait/ex2.jpg', pos:'center 35%',
+        badges:['New Arrival'], chips:['2 hr. 05 min','Concert, Music','G'],
+        d:'BossCKM takes the stage for Dream Warrior, a night of rock anthems, fan favourites and a few surprises.'},
+      {t:'Man City vs Arsenal', portrait:'posters_portrait/ex3.jpg', wide:'posters_portrait/ex3.jpg', pos:'center 40%',
+        badges:['Premier League'], chips:['Sun 22:30','Football','G'],
+        d:'Haaland\'s Manchester City host Arsenal at the Etihad in a title clash that could decide the Premier League race.'},
+      {t:'Match Day: Man Utd vs Chelsea', portrait:'posters_portrait/ex4.jpg', wide:'posters_portrait/ex4.jpg', pos:'center 45%',
+        badges:['Emirates FA Cup'], chips:['Sat 19:30','Football','G'],
+        d:'Manchester United welcome Chelsea at Old Trafford for a place in the next round of the Emirates FA Cup.'},
+      {t:'Match Day: Man Utd vs Arsenal', portrait:'posters_portrait/ex5.jpg', wide:'posters_portrait/ex5.jpg', pos:'center 40%',
+        badges:['Premier League'], chips:['Sat 23:00','Football','G'],
+        d:'Manchester United face Arsenal under the Old Trafford lights in one of the Premier League\'s fiercest rivalries.'}
+    ];
+    var cards = picks.map(function(it){
+      return '<div class="card hero-pick tp-card ex-tp item" data-title="'+it.t+'" data-ring-art="url(&quot;'+it.wide+'&quot;)">'+
+        '<div class="tp-portrait" style="background-image:url(\''+it.portrait+'\');'+(it.ppos?'background-position:'+it.ppos+';':'')+'"></div>'+
+        '<div class="tp-wide" style="background-image:url(\''+it.wide+'\');background-position:'+it.pos+';"></div>'+
+        '<div class="scrim"></div>'+
+        '<div class="content">'+
+          '<div class="top-badges">'+it.badges.map(function(b){ return '<span class="pill-rank">'+b+'</span>'; }).join('')+'</div>'+
+          '<h3>'+it.t+'</h3>'+
+          '<p class="desc">'+it.d+'</p>'+
+          '<div class="chanrow">'+PREMIUM+it.chips.map(function(c){ return '<span class="catchip">'+c+'</span>'; }).join('')+'</div>'+
+        '</div>'+
+      '</div>';
     }).join('');
-    addRow('<div class="row-block toppick-row"><div class="row-title">AIS Play Exclusive</div><div class="rail-viewport"><div class="rail-track">'+heroCard+cards+'</div></div></div>');
+    addRow('<div class="row-block toppick-row"><div class="row-title">AIS Play Exclusive</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
     MOBILE_ROWS.push({title:'AIS Play Exclusive', type:'mixed', items: [
       {kind:'editorial', t:'Miss Universe Thailand 2026', sub:'Premium', img:'posters/miss-universe.jpg',
         desc:'The Miss Universe Thailand 2026 pageant is underway with provincial preliminaries and delegate selections.'}
-    ].concat(portraits.map(function(t,i){ return {kind:'poster', t:t, img:'posters_portrait/ex'+(i+1)+'.jpg'}; }))});
+    ].concat(picks.slice(1).map(function(it){ return {kind:'poster', t:it.t, img:it.portrait}; }))});
   })();
 
   /* ---------- Row: Ad banner ---------- */
@@ -1211,6 +1336,22 @@
     '</div></div></div>');
     MOBILE_ROWS.push({title:null, type:'banner', items:[{t:'Choose What I See', cta:'Customize', special:true}]});
   })();
+
+  // House of the Dragon and Top Gun: Maverick are on HBO Max here: wherever their posters land, the provider tag is HBO
+  document.querySelectorAll('[style*="posters_portrait/House.jpg"], [style*="posters_portrait/topgun_m.jpg"]').forEach(function(card){
+    card.querySelectorAll('img[src*="badges/tag-"]').forEach(function(img){ img.src = 'badges/tag-hbo.png'; img.alt = 'hbo'; });
+  });
+  MOBILE_ROWS.forEach(function(r){ (r.items || []).forEach(function(it){ if(it.img && /(House|topgun_m)\.jpg$/.test(it.img) && it.plat) it.plat = 'hbo'; }); });
+  // John Wick 4, Venom and The Debt Collector are Netflix titles
+  document.querySelectorAll('[style*="posters_portrait/John.jpg"], [style*="posters_portrait/Venom.jpg"], [style*="posters_portrait/debt.jpg"]').forEach(function(card){
+    card.querySelectorAll('img[src*="badges/tag-"]').forEach(function(img){ img.src = 'badges/tag-netflix.png'; img.alt = 'netflix'; });
+  });
+  MOBILE_ROWS.forEach(function(r){ (r.items || []).forEach(function(it){ if(it.img && /(John|Venom|debt)\.jpg$/.test(it.img) && it.plat) it.plat = 'netflix'; }); });
+  // F1: The Movie is a Prime Video title
+  document.querySelectorAll('[style*="posters_portrait/F1.jpg"], [style*="posters/f1.jpg"]').forEach(function(card){
+    card.querySelectorAll('img[src*="badges/tag-"]').forEach(function(img){ img.src = 'badges/tag-prime.png'; img.alt = 'prime'; });
+  });
+  MOBILE_ROWS.forEach(function(r){ (r.items || []).forEach(function(it){ if(it.img && /(F1|\/f1)\.jpg$/.test(it.img) && it.plat) it.plat = 'prime'; }); });
 
   var spacer = document.createElement('div');
   spacer.className = 'end-spacer';
@@ -1318,12 +1459,54 @@
   function updateHeroFromCard(el){
     if(curRow <= HERO_ROW_INDEX || curRow > HERO_ZONE_LAST_ROW || !el) return;
     if(el.classList.contains('rank-wrap')) el = el.querySelector('.card') || el;
-    if(!el.classList.contains('card') || el.closest('.epg-row, .partner-row')) return;
+    // TV Guide rail: its own dark backdrop; the "View All" tile introduces the guide, a programme card shows what's on
+    if(el.closest('.epg-row')){
+      setHeroBg('tvguide', "url('posters/tvguide-bg.jpg')");
+      var isAll = el.classList.contains('epg-countdown');
+      heroTitleEl.textContent = isAll ? 'TV Guide' : el.dataset.title;
+      heroLogoEl.style.display = 'none';
+      var next = el.querySelector('.epg-next .epg-title');
+      heroChannelEl.textContent = isAll ? '' : (el.querySelector('.epg-now .epg-sub').textContent + (next ? '  ·  Next: ' + next.textContent : ''));
+      heroLiveEl.style.display = 'none';   // no Live tag for TV Guide programmes
+      heroChannelEl.parentElement.style.display = isAll ? 'none' : '';   // no info line under "TV Guide"
+      heroDescEl.textContent = isAll ? 'See what\'s on now and next across all your channels, and never miss a live moment.' : '';
+      heroDescEl.style.display = isAll ? '' : 'none';
+      heroSection.classList.add('card-mode');
+      return;
+    }
+    // Hot Channels: the TV Guide backdrop, the channel's name as the title
+    if(el.closest('.channel-row')){
+      setHeroBg('tvguide', "url('posters/tvguide-bg.jpg')");
+      heroTitleEl.textContent = el.dataset.title;
+      heroLogoEl.style.display = 'none';
+      heroChannelEl.parentElement.style.display = 'none';
+      heroLiveEl.style.display = 'none';
+      heroDescEl.textContent = el.classList.contains('live') ? 'On air now. Jump straight into the live broadcast.' : 'Tune in to ' + el.dataset.title + ', live and on demand.';
+      heroDescEl.style.display = '';
+      heroSection.classList.add('card-mode');
+      return;
+    }
+    // All Apps rail: the apps backdrop; the "All Apps" tile introduces the apps, a logo tile names its app
+    if(el.closest('.partner-row')){
+      setHeroBg('allapps', "url('posters/allapps-bg.jpg?v=2')");
+      var isApps = el.classList.contains('partner-allapps');
+      heroTitleEl.textContent = isApps ? 'All Apps' : el.dataset.title;
+      heroLogoEl.style.display = 'none';
+      heroLiveEl.style.display = 'none';
+      heroChannelEl.parentElement.style.display = 'none';
+      heroDescEl.textContent = isApps ? 'All your favourite streaming apps in one place.\nNetflix, HBO Max, Disney+ Hotstar, Prime Video and more, ready to watch.'
+                                      : 'Open ' + el.dataset.title + ' and pick up right where you left off.';
+      heroDescEl.style.display = '';
+      heroSection.classList.add('card-mode');
+      return;
+    }
+    if(!el.classList.contains('card')) return;
     var art = artOf(el);
     if(!art) return;
     setHeroBg(art, art);
     var info = ART_INFO[(art.match(/([^\/'"]+)['"]?\)$/) || [])[1]] || {};
-    var t = el.dataset.desc ? el.dataset.title : (info.t || (el.dataset.title || (el.parentElement && el.parentElement.dataset.title) || '').replace(/^#\d+\s+/, ''));
+    var ownTitle = (el.dataset.title || (el.parentElement && el.parentElement.dataset.title) || '').replace(/^#\d+\s+/, '');
+    var t = el.dataset.desc ? ownTitle : (info.t || ownTitle);
     if(heroTitleEl && t) heroTitleEl.textContent = t;
     // tag: the card's provider tag logo (or a data-tag); info line: data-meta, else the card's "mins left" / time
     var tagImg = el.querySelector('img[src*="badges/tag-"]');
@@ -1333,6 +1516,7 @@
     var sub = el.querySelector('.strip .s, .card-badge-corner.dim');
     heroChannelEl.textContent = el.dataset.meta || (sub ? sub.textContent : '');
     heroLiveEl.style.display = el.querySelector('.card-badge-corner.ribbon') ? '' : 'none';
+    heroChannelEl.parentElement.style.display = '';
     var desc = el.dataset.desc || info.d || '';
     heroDescEl.textContent = desc;
     heroDescEl.style.display = desc ? '' : 'none';
@@ -1345,6 +1529,7 @@
     if(heroSection) heroSection.classList.remove('card-mode');
     if(heroLogoEl) heroLogoEl.style.display = '';
     if(heroDescEl) heroDescEl.style.display = '';
+    if(heroChannelEl) heroChannelEl.parentElement.style.display = '';
     if(heroTitleEl) heroTitleEl.textContent = item.dataset.heroTitle;
     if(heroLogoEl){ heroLogoEl.src = 'badges/' + heroTagFile(item.dataset.heroLogo); heroLogoEl.alt = item.dataset.heroLogo; }
     if(heroChannelEl) heroChannelEl.textContent = item.dataset.heroChannel;
@@ -1776,8 +1961,8 @@
   // the ring at the same spot, scaled like the card, so it overlaps the ring instead of being covered by it.
   var ringBadge = homeRing.querySelector('.ring-badge');
   function showRingBadge(el){
-    var b = el.querySelector(':scope > .card-badge-corner');
-    if(!b || !b.classList.contains('ribbon')){ ringBadge.classList.remove('on'); return; }
+    var b = el.querySelector(':scope > .card-badge-corner.ribbon, :scope > .chan-live');   // Live ribbon / channel LIVE label
+    if(!b){ ringBadge.classList.remove('on'); return; }
     var k = getScale() * focusScale(el), pad = RING_W * getScale();
     ringBadge.innerHTML = b.outerHTML;
     ringBadge.style.transform = 'translate(' + pad + 'px,' + pad + 'px) scale(' + k + ')';
