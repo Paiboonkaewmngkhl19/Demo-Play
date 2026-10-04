@@ -24,10 +24,13 @@ import iconAdded from "../assets/shorts/added.svg";
 import iconShare from "../assets/shorts/share.svg";
 import iconClearScreen from "../assets/shorts/clear-screen.svg";
 import iconNavHome from "../assets/shorts/nav-home.svg";
+import iconNavHomeActive from "../assets/shorts/nav-home-active.svg";
 import iconNavTv from "../assets/shorts/nav-tv.svg";
 import iconNavShorts from "../assets/shorts/nav-shorts.svg";
+import iconNavShortsDefault from "../assets/shorts/nav-shorts-default.svg";
 import iconNavSearch from "../assets/shorts/nav-search.svg";
 import avatarUser from "../assets/shorts/avatar-placeholder.png";
+import HomeScreen from "./HomeScreen";
 // Brand marks for the share sheet (Simple Icons, CC0), inlined so they take the tile's colour
 import logoLine from "../assets/shorts/share-line.svg?raw";
 import logoMessenger from "../assets/shorts/share-messenger.svg?raw";
@@ -313,6 +316,8 @@ export default function App() {
   const [idx, setIdx] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [screen, setScreen] = useState<"feed" | "playback">("feed");
+  // Bottom navigation tab: Shorts (the feed) or Home (HomeScreen, drawn over the feed, which pauses meanwhile)
+  const [tab, setTab] = useState<"Shorts" | "Home">("Shorts");
   // Views the user came from, so Back can return to exactly where they were
   const [trail, setTrail] = useState<{ screen: "feed" | "playback"; sheetOpen: boolean }[]>([]);
   const [muted, setMuted] = useState(true);
@@ -512,7 +517,7 @@ export default function App() {
                       {f && (
                         <FeedCard
                           item={f}
-                          active={o === 0 && !sheetOpen && !shareOpen}
+                          active={o === 0 && !sheetOpen && !shareOpen && tab === "Shorts"}
                           liked={liked.has(f.id)}
                           saved={saved.has(f.id)}
                           reminded={reminded.has(f.id)}
@@ -538,7 +543,7 @@ export default function App() {
               </motion.div>
             </div>
 
-            {CAME_FROM_PICKER && (
+            {CAME_FROM_PICKER && tab === "Shorts" && (
               <button
                 onClick={exitToPicker}
                 aria-label="Back"
@@ -556,7 +561,21 @@ export default function App() {
                 style={{ left: `${seekUi.progress * 100}%`, bottom: `calc(${feedBottom} - 4px)`, transform: "translateX(-50%)", boxShadow: "0 0 0 4px rgba(255,255,255,0.25)" }}
               />
             )}
-            <BottomNav bottom={navBottom} indicator={!isPhone} onTab={label => toast(`${label} (demo)`)} />
+            {tab === "Home" && (
+              <HomeScreen
+                topInset={isPhone ? "env(safe-area-inset-top, 0px)" : `${STATUS_H}px`}
+                bottom={feedBottom}
+                shorts={FEED.map(f => ({ img: f.img, title: f.title }))}
+                onOpenShort={i => { flushSync(() => setIdx(i)); setTab("Shorts"); }}
+                onToast={toast}
+              />
+            )}
+            <BottomNav
+              bottom={navBottom}
+              indicator={!isPhone}
+              active={tab}
+              onTab={label => { if (label === "Home" || label === "Shorts") setTab(label); else toast(`${label} (demo)`); }}
+            />
 
             {/* Details page (the CTA opens it) */}
             <AnimatePresence>
@@ -1336,21 +1355,21 @@ function StatusBar() {
 
 // ─── Bottom navigation (Figma "Mobile / Bottom Navigation"), Shorts selected ─────
 const NAV_TABS = [
-  { label: "Home", icon: iconNavHome },
+  { label: "Home", icon: iconNavHome, activeIcon: iconNavHomeActive },
   { label: "TV", icon: iconNavTv },
-  { label: "Shorts", icon: iconNavShorts, active: true },
+  { label: "Shorts", icon: iconNavShortsDefault, activeIcon: iconNavShorts },
   { label: "Search", icon: iconNavSearch },
   { label: "Profile", avatar: avatarUser },
 ];
 
-function BottomNav({ bottom, indicator, onTab }: { bottom: string; indicator: boolean; onTab: (label: string) => void }) {
+function BottomNav({ bottom, indicator, active, onTab }: { bottom: string; indicator: boolean; active: string; onTab: (label: string) => void }) {
   return (
     <div
       className="absolute left-0 right-0 bottom-0 z-20 flex flex-col"
       style={{ background: "#101010", borderTop: "1px solid #282e38", filter: "drop-shadow(0 -8px 12px rgba(0,0,0,0.33))", paddingBottom: bottom }}
     >
       <div className="flex items-center w-full" style={{ height: NAV_H }}>
-        {NAV_TABS.map(t => (
+        {NAV_TABS.map(tb => ({ ...tb, active: tb.label === active })).map(t => (
           <button
             key={t.label}
             onClick={() => { if (!t.active) onTab(t.label); }}
@@ -1359,7 +1378,7 @@ function BottomNav({ bottom, indicator, onTab }: { bottom: string; indicator: bo
             <span className="w-10 h-9 rounded-[12px] flex items-center justify-center">
               {t.avatar
                 ? <img src={t.avatar} alt="" className="w-6 h-6 rounded-full object-cover" style={{ background: "#404045" }} />
-                : <img src={t.icon} alt="" className="w-6 h-6 block" />}
+                : <img src={t.active && t.activeIcon ? t.activeIcon : t.icon} alt="" className="w-6 h-6 block" />}
             </span>
             <span className="text-[11px] leading-[1.15]" style={{ color: t.active ? "#e8e8e8" : "#a8a8a8", fontWeight: t.active ? 600 : 400, fontFamily: "'Open Sans'" }}>{t.label}</span>
           </button>
