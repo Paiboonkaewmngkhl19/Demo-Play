@@ -2,7 +2,7 @@
 <title>Stream Home Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-0:#0a0714;
@@ -241,6 +241,10 @@
   /* content card (with title strip) */
   .card-content{width:371px;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;}
   .card-content .thumb{height:210px;position:relative;}
+  /* a card whose Live ribbon hangs past its edge: unclip it and round the thumb and strip themselves instead */
+  .card-content.has-ribbon{overflow:visible;}
+  .card-content.has-ribbon .thumb{border-radius:14px 14px 0 0;}
+  .card-content.has-ribbon .strip{border-radius:0 0 14px 14px;}
   .card-content .strip{background:var(--card-title-bg);padding:14px 12px;display:flex;flex-direction:column;gap:8px;}
   /* focused card: its grey info areas turn ~30% darker so the focused card stands apart */
   .card-content .strip, .epg-now, .epg-next, .card-karaoke{ transition:background-color .22s cubic-bezier(.2,0,0,1); }
@@ -258,8 +262,12 @@
   .card-poster .platform{position:absolute;right:6px;top:6px;height:34px;padding:0 10px;border-radius:6px;background:rgba(0,0,0,.55);display:flex;align-items:center;font-size:13px;font-weight:700;}
 
   /* top10 rank card */
-  .rank-wrap{position:relative;display:flex;align-items:flex-end;flex:0 0 auto;}
-  .rank-num{font-size:230px;font-weight:800;line-height:1;color:transparent;-webkit-text-stroke:3px rgba(255,255,255,0.35);margin-right:-58px;user-select:none;}
+  /* Figma "Number style": a solid, softly fading numeral ~290px tall (Plus Jakarta Sans ExtraBold) behind the poster,
+     baseline 315px below the card top; the poster starts 169px in (less for a narrow "1") and overlaps the digit.
+     layoutRankNums() sizes each SVG numeral to its ink and sets the wrap's left padding. */
+  .rank-wrap{position:relative;display:block;flex:0 0 auto;padding-left:169px;}
+  .rank-wrap > .card{position:relative;z-index:1;filter:drop-shadow(0 0 8.5px rgba(0,0,0,.7));}
+  .rank-num{position:absolute;left:0;top:0;height:338px;overflow:visible;pointer-events:none;user-select:none;}
   /* Focus targets this whole wrap (rank number + poster) for keyboard nav,
      but the visible focus affordance — scale + ring — should land on the
      poster card only, leaving the giant rank numeral untouched: cancel the
@@ -270,10 +278,12 @@
 
   /* karaoke card */
   .card-karaoke{width:280px;border-radius:10px;overflow:hidden;background:#2b2b2b;}
-  .card-karaoke .art{height:280px;position:relative;}
-  .card-karaoke .meta{padding:20px;display:flex;flex-direction:column;gap:4px;}
-  .card-karaoke .meta .song{font-size:20px;font-weight:600;}
-  .card-karaoke .meta .artist{font-size:16px;opacity:.85;}
+  .karaoke-track{gap:30px;}
+  .card-karaoke .art{width:280px;height:280px;object-fit:cover;display:block;}
+  .card-karaoke .meta{padding:20px 29px;display:flex;flex-direction:column;gap:4px;line-height:1.2;}
+  .card-karaoke .meta .song, .card-karaoke .meta .artist{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .card-karaoke .meta .song{font-size:28px;font-weight:600;}
+  .card-karaoke .meta .artist{font-size:24px;}
 
   /* chips */
   .chip-row .rail-track{align-items:center;padding-top:6px;padding-bottom:6px;}
@@ -317,10 +327,12 @@
   /* partner */
   .partner-row .rail-track{align-items:center;}
   .partner-allapps{
-    height:100px;padding:0 26px;border-radius:12px;display:flex;align-items:center;gap:6px;
+    width:230px;height:111px;box-sizing:border-box;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:6px;   /* same size as the logo tiles */
     background:rgba(255,255,255,.14);box-shadow:inset -1px 3px 16px rgba(255,255,255,.16);
     font-size:18px;flex:0 0 auto;
   }
+  .partner-logo-tile{ width:230px !important; height:111px !important; border-radius:8px; overflow:hidden; background:#000; }
+  .partner-logo-tile img{ width:100%; height:100%; object-fit:cover; display:block; }
   .partner-card{width:200px;height:96px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;letter-spacing:.02em;flex:0 0 auto;}
   .partner-logo{height:34px;}
 
@@ -335,29 +347,41 @@
   .hero-pick p.desc{font-size:22px;color:var(--ink-dim);max-width:900px;margin:0;line-height:1.4;}
   .hero-pick .chanrow{display:flex;align-items:center;gap:14px;margin-top:4px;}
   .hero-pick .chanlogo{height:44px;padding:0 14px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;font-weight:700;font-size:16px;}
+  .hero-pick .chan-tag-logo{height:44px;width:66px;object-fit:contain;border-radius:8px;background:#000;display:block;flex:0 0 auto;}   /* platform tag logo as a filled rounded square, chip height */
   .catchip{background:rgba(255,255,255,.3);padding:9px 15px;border-radius:8px;font-size:19px;}
 
   /* portrait card */
   .portrait-card{width:236px;height:354px;border-radius:12px;overflow:hidden;flex:0 0 auto;border:0;box-shadow:0 0 22px rgba(0,0,0,.6);align-self:flex-start;}   /* no stroke */
   .portrait-card .art{height:354px;position:relative;}
+  .exclusive-card{width:437px !important;height:654px !important;border-radius:17px;}
+  .exclusive-card img{width:100%;height:100%;object-fit:cover;display:block;}
 
   /* ad banner */
-  .ad-banner{width:1690px;border-radius:20px;overflow:hidden;position:relative;height:520px;flex:0 0 auto;}
-  .ad-banner .bg{position:absolute;inset:0;}
-  .ad-banner .txt{position:absolute;left:60px;top:110px;display:flex;flex-direction:column;gap:16px;}
-  .ad-banner h3{font-size:44px;font-weight:600;margin:0;text-shadow:0 2px 10px rgba(0,0,0,.5);}
-  .ad-banner .cta{font-size:26px;font-weight:500;}
+  /* Figma "Under the mistletoe": a 1699×649 artwork whose top 43px is transparent apart from the Grinch popping out.
+     The item (and so the focus ring) is the card body below that; the artwork overhangs it upward. */
+  .ad-banner{width:1699px;height:606px;border-radius:20px;position:relative;flex:0 0 auto;margin-top:43px;}
+  .ad-banner .art{position:absolute;left:0;top:-43px;width:1699px;height:649px;object-fit:cover;pointer-events:none;}
+  .ad-banner .txt{position:absolute;left:60px;top:224px;display:flex;flex-direction:column;gap:18px;line-height:1.2;}
+  .ad-banner h3{font-size:50px;font-weight:600;margin:0;}
+  .ad-banner .cta{font-size:32px;font-weight:500;}
 
   /* personalize */
-  .personalize{width:1690px;border-radius:36px;overflow:hidden;position:relative;height:520px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
-  .personalize .bg{position:absolute;inset:0;background:linear-gradient(180deg, rgba(23,14,46,.2), rgba(23,14,46,.95)), radial-gradient(700px 400px at 50% 30%, rgba(112,39,217,.35), transparent 60%);}
-  .personalize .inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center;}
-  .personalize h3{font-size:42px;font-weight:600;margin:0;}
+  /* personalize — Figma "Customize": a 1738×620 purple panel with five posters behind a tint, title + button on top */
+  .personalize{width:1738px;height:620px;border-radius:36px;overflow:hidden;position:relative;flex:0 0 auto;background:#170e2e;}
+  .personalize .glow{position:absolute;left:-198px;top:-371px;width:2008px;height:1316px;pointer-events:none;}
+  .personalize .cz-poster{position:absolute;top:66px;width:300px;height:449px;border-radius:28px;overflow:hidden;filter:drop-shadow(0 0 10px rgba(0,0,0,.2));}
+  .personalize .cz-poster.low{top:70px;}
+  .personalize .cz-poster img{position:absolute;left:0;top:0;width:323px;height:483px;object-fit:cover;}
+  .personalize .tint{position:absolute;inset:0;border-radius:36px;
+    background:linear-gradient(25.7deg, rgba(0,0,0,.16) 24.8%, rgba(0,0,0,.24) 72.5%),
+               linear-gradient(179.2deg, rgba(255,255,255,0) 1.3%, rgba(41,2,110,.32) 53.4%, rgba(17,11,53,.4) 88.8%);}
+  .personalize .inner{position:absolute;left:548px;top:394px;width:642px;display:flex;flex-direction:column;align-items:center;gap:26px;text-align:center;}
+  .personalize h3{font-size:50px;font-weight:600;line-height:1.2;margin:0;white-space:nowrap;}
   .btn-customize{
-    height:64px;padding:0 30px;border-radius:14px;display:flex;align-items:center;gap:8px;
-    background:radial-gradient(120px 100px at 30% 90%, rgba(165,139,212,.7), rgba(255,255,255,.12));
+    width:300px;height:80px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse 260px 150px at 12% 90%, rgba(165,139,212,.24) 6%, rgba(165,139,212,.6) 100%);
     box-shadow:inset -1px 3px 16px rgba(255,255,255,.16);
-    font-size:24px;font-weight:600;border:3px solid transparent;
+    font-size:36px;font-weight:400;line-height:1.2;
   }
 
   .end-spacer{height:70px;}
@@ -375,7 +399,10 @@
   .item{cursor:pointer;transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s ease, border-color .22s ease;}
   .item.focused{transform:scale(1.07);z-index:5;position:relative;}   /* every rail: 7% */
   .topnav .item.focused{transform:scale(1.06);}   /* the top bar isn't a rail: unchanged */
-  .toppick-row .item.focused{transform:scale(1.05);}   /* Top Pick For You: its big feature card would grow too far at 7% */
+  .toppick-row .item.focused{transform:scale(1.05);}   /* Top Pick For You + AIS Play Exclusive: their big feature card would grow too far at 7% */
+  /* The wide feature card grows (width × 5%)/2 = 31px past each side when focused, more than the 32px rail gap, so give
+     it extra room on the right: growth + 8px ring + 24px clear before the next card. */
+  .toppick-row .hero-pick{margin-right:31px;}
   .ad-banner.item.focused,.personalize.item.focused{transform:scale(1.0);}
 
   /* ---------- Sliding "glass" focus ring (same as the Choose a Demo page) ----------
@@ -421,7 +448,19 @@
      the hero and this row's content gives the ring room to fully clear it. */
   .hero-row{padding-top:102px;padding-bottom:50px;}   /* 102px puts the chips 16px above the screen's bottom on first load */   /* 50px + the chips' 6px top padding = 56px from the cards to the chips */
   .hero-row .card{overflow:visible;}   /* lets the Live badge hang over the card's edge */
-  .hero-row .card-badge-corner{left:-12px;top:14px;font-size:20px;padding:8px 18px 8px 22px;box-shadow:0 2px 6px rgba(0,0,0,.35);}
+  /* Figma "badgeWithIcon" Live ribbon (scaled ~85%): 94px wide, hangs 17px past the card's left edge, square bottom-left corner
+     with a dark fold underneath it exactly as wide as the overhang, so it meets the card edge (the ribbon wrapping
+     round the card) */
+  .card-badge-corner.ribbon{
+    left:-17px;top:6px;width:94px;box-sizing:border-box;padding:6px 12px;text-align:center;
+    font-size:22px;font-weight:600;line-height:27px;border-radius:8.4px 8.4px 8.4px 0;background:#ff383c;box-shadow:none;}
+  .card-badge-corner.ribbon::after{
+    content:'';position:absolute;left:0;bottom:-17px;width:17px;height:17px;background:#161616;
+    clip-path:polygon(0 0, 100% 0, 100% 100%);}
+  /* a copy of the focused card's badge drawn inside the ring, so the badge sits ON TOP of the ring (placeHomeRing) */
+  .home-ring .ring-badge{position:absolute;left:0;top:0;transform-origin:0 0;opacity:0;transition:opacity .12s ease;}
+  .home-ring .ring-badge.on{opacity:1;}
+  .home-ring .ring-badge .card-badge-corner{position:absolute;color:#fff;}
   .rail-provider{position:absolute;left:14px;bottom:14px;}
   .rail-provider .platform{display:flex;align-items:center;height:36px;padding:0 12px;border-radius:6px;font-size:14px;font-weight:800;color:#fff;}
   .rail-provider .badge-logo{height:22px;display:block;}   /* room for the centre-scaled card's top edge below the pinned hero */
@@ -757,7 +796,7 @@
         ' data-hero-title="'+it.hero.title+'" data-hero-logo="'+it.hero.logo+'" data-hero-channel="'+it.hero.channel+'"'+
         ' data-hero-live="'+(it.hero.live?'1':'0')+'" data-hero-desc="'+it.hero.desc+'" data-hero-img="posters/'+it.img+'"'+
         ' style="background-image:url(\'posters/'+it.img+'\');background-size:cover;background-position:center;">'+
-        (it.badge ? '<span class="card-badge-corner">'+it.badge+'</span>' : '') +
+        (it.badge ? '<span class="card-badge-corner ribbon">'+it.badge+'</span>' : '') +
         (it.plat ? '<span class="rail-provider">'+platformPill(it.plat)+'</span>' : '') +
       '</div>';
     }).join('');
@@ -791,11 +830,17 @@
       {t:'Loki', s:'40 mins left', pct:20, plat:'disney'},
       {t:'Top Gun: Maverick', s:'55 mins left', pct:15, plat:'prime'}
     ];
+    // random point in each title (15–85%) with a random runtime (40–120 min), so "mins left" matches the bar
+    items.forEach(function(it){
+      it.pct = 15 + Math.round(Math.random()*70);
+      it.dur = 40 + Math.round(Math.random()*80);
+      it.s = Math.max(1, Math.round(it.dur * (100 - it.pct) / 100)) + ' mins left';
+    });
     var cards = items.map(function(it,i){
       return '<div class="card card-content item" data-title="'+it.t+'">'+
         '<div class="thumb" style="'+posterStyle()+'">'+platformTag(it.plat)+'</div>'+
         '<div class="strip"><div class="t">'+it.t+'</div><div class="s">'+it.s+'</div>'+
-        '<div class="progress"><i style="width:'+it.pct+'%"></i></div></div>'+
+        '<div class="progress"><i class="play-prog" data-dur="'+it.dur+'" style="width:'+it.pct+'%"></i></div></div>'+
       '</div>';
     }).join('');
     addRow('<div class="row-block"><div class="row-title">Jump Right Back In</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
@@ -811,10 +856,7 @@
       {logo:'<img src="icons/trophy.png" alt="">', title:'Champions League 15/16: Real Madrid vs Atlético de Madrid', now:'Started at 6:30 PM', next:'Classic Highlights', nextTime:'Start in 7:30 PM'},
       {logo:null, title:'Cycling – In Flanders Fields – Middelkerke to Wevelgem', now:'Started at 6:30 PM', next:'Mountain Bike – UCI World Cup', nextTime:'Start in 7:30 PM'},
       {logo:null, title:'Malaysia Regional Cup \'26: Wildcats v Sneakers', now:'Started at 6:30 PM', next:'Heroines (S2E02)', nextTime:'Start in 7:30 PM', heart:true},
-      {logo:null, title:'Morning News Update', now:'Started at 6:30 PM', next:'Weather Today', nextTime:'Start in 7:30 PM'},
-      {logo:null, title:'Thai Drama: Love in the Rain (EP12)', now:'Started at 6:30 PM', next:'Love in the Rain (EP13)', nextTime:'Start in 7:30 PM', heart:true},
-      {logo:null, title:'Movie Marathon: Action Night', now:'Started at 6:30 PM', next:'Movie Marathon: Sequel', nextTime:'Start in 7:30 PM'},
-      {logo:null, title:'Kids Zone: Dragon Riders (EP4)', now:'Started at 6:30 PM', next:'Dragon Riders (EP5)', nextTime:'Start in 7:30 PM'}
+      {logo:null, title:'Morning News Update', now:'Started at 6:30 PM', next:'Weather Today', nextTime:'Start in 7:30 PM'}
     ];
     var epgCards = items.map(function(it,i){
       return '<div class="epg-card item" data-title="'+it.title+'">'+
@@ -822,11 +864,24 @@
           '<div class="epg-avatar" style="background:'+gradAt(i+7,120)+'">'+(it.logo || it.title.charAt(0).toUpperCase())+'</div>'+
           '<div><div class="epg-title">'+it.title+'</div><div class="epg-sub">'+it.now+'</div></div>'+
           (it.heart?'<span class="epg-heart"><img src="icons/fav.png" alt=""></span>':'')+
-          '<div class="progress" style="background:#8a8a8a;"><i style="width:45%"></i></div>'+
+          '<div class="progress" style="background:#8a8a8a;"><i class="epg-prog" style="width:'+(15 + Math.round(Math.random()*70))+'%"></i></div>'+
         '</div>'+
         '<div class="epg-next"><div class="epg-title">'+it.next+'</div><div class="epg-sub">'+it.nextTime+'</div></div>'+
       '</div>';
     }).join('');
+    // each programme (and each Jump Right Back In title) starts at a random point and keeps playing: +1% every 3s,
+    // starting over when it ends; Jump Right Back In's "mins left" follows its bar
+    setInterval(function(){
+      document.querySelectorAll('.epg-prog, .play-prog').forEach(function(bar){
+        var w = parseFloat(bar.style.width) + 1;
+        if(w > 100) w = 2;
+        bar.style.width = w + '%';
+        if(bar.dataset.dur){
+          var s = bar.closest('.strip').querySelector('.s');
+          s.textContent = Math.max(1, Math.round(bar.dataset.dur * (100 - w) / 100)) + ' mins left';
+        }
+      });
+    }, 3000);
     var countdown = '<div class="epg-countdown item" data-title="TV Guide – View All"><b>TV Guide</b><span>View All</span></div>';
     addRow('<div class="row-block epg-row"><div class="rail-viewport"><div class="rail-track">'+countdown+epgCards+'</div></div></div>');
     MOBILE_ROWS.push({title:'TV Guide', type:'epg', items: items.map(function(it){
@@ -837,12 +892,15 @@
   /* ---------- Row: Partner / All Apps ---------- */
   (function(){
     var apps = ['NETFLIX','HBO MAX','PRIME VIDEO','DISNEY+','VIU','WeTV','YouTube','Monomax','iQIYI','TrueID'];
-    var cards = apps.map(function(a,i){
-      var key = a.toLowerCase().indexOf('netflix')>=0?'netflix':a.toLowerCase().indexOf('hbo')>=0?'hbo':a.toLowerCase().indexOf('prime')>=0?'prime':a.toLowerCase().indexOf('disney')>=0?'disney':a.toLowerCase().indexOf('viu')>=0?'viu':null;
-      // provider apps: the brand tile fills the whole card (its logo scaled up, on the brand colour)
-      var brandBg = {netflix:'#000', hbo:'#000', prime:'#1a98ff', disney:'#073c4e', viu:'#ffbf00'};
-      if(key) return '<div class="partner-card partner-brand item" data-title="'+a+'" style="background:'+brandBg[key]+' url(\'badges/tag-'+key+'.png\') center / cover no-repeat;"></div>';
-      return '<div class="partner-card item" data-title="'+a+'" style="background:'+gradAt(i+2,100)+'">'+a+'</div>';
+    // Partner logo tiles from Figma ("logo apps", For-PBR node 625:57140), in the design's order; each logo image fills
+    // its 230 x 111 card (object-fit: cover)
+    var LOGO_TILES = [
+      {t:'Netflix', img:'netflix.png'}, {t:'HBO Max', img:'hbo.png'}, {t:'Disney+ Hotstar', img:'disney.png'},
+      {t:'Prime Video', img:'prime.png'}, {t:'Viu', img:'viu.png'}, {t:'Monomax', img:'monomax.png'},
+      {t:'WeTV', img:'wetv.png'}, {t:'YouTube', img:'youtube.png'}, {t:'iQIYI', img:'iqiyi.png'}, {t:'TrueID', img:'trueid.png'}
+    ];
+    var cards = LOGO_TILES.map(function(a){
+      return '<div class="partner-card partner-logo-tile item" data-title="'+a.t+'"><img src="partners/'+a.img+'" alt="'+a.t+'"></div>';
     }).join('');
     addRow('<div class="row-block partner-row"><div class="rail-viewport"><div class="rail-track">'+
       '<div class="partner-allapps item" data-title="All Apps">All Apps</div>'+cards+
@@ -895,10 +953,10 @@
       {t:'Formula 1: Bangkok Street Circuit', time:'Sun 17:00 PM'}
     ];
     // the live match: same size and layout as the rest of the rail, with a Live badge
-    var bigCard = '<div class="card card-content item" data-title="'+big.t+'">'+
+    var bigCard = '<div class="card card-content has-ribbon item" data-title="'+big.t+'">'+
         '<div class="thumb" style="background-image:url(\'posters/live-fixture-crest.jpg\');background-size:cover;background-position:center;"></div>'+
         '<div class="strip" style="position:relative;"><div class="t">'+big.t+'</div></div>'+
-        '<span class="card-badge-corner">Live</span>'+
+        '<span class="card-badge-corner ribbon">Live</span>'+
       '</div>';
     var rest = items.map(function(it,i){
       return '<div class="card card-content item" data-title="'+it.t+'">'+
@@ -923,11 +981,45 @@
     var plats = ['netflix','disney','netflix','disney','netflix','prime','hbo','viu','netflix'];
     var cards = titles.map(function(t,i){
       return '<div class="rank-wrap item" data-title="#'+(i+1)+' '+t+'">'+
-        '<span class="rank-num">'+(i+1)+'</span>'+
+        // The font builds some digits from overlapping contours, so a plain stroke shows seams inside the "3" etc.
+        // Instead: a 0.6px stroke masked to outside the filled glyph, leaving a clean 0.3px outer outline.
+        '<svg class="rank-num" data-n="'+(i+1)+'">'+
+          '<defs><mask id="rankMask'+(i+1)+'" maskUnits="userSpaceOnUse" x="-50" y="-50" width="600" height="500">'+
+            '<rect x="-50" y="-50" width="600" height="500" fill="#fff"/>'+
+            '<text font-family="Plus Jakarta Sans" font-weight="800" fill="#000">'+(i+1)+'</text></mask></defs>'+
+          '<text font-family="Plus Jakarta Sans" font-weight="800" fill="url(#rankNumFill)">'+(i+1)+'</text>'+
+          '<text font-family="Plus Jakarta Sans" font-weight="800" fill="none" stroke="#fff" stroke-width="0.6" mask="url(#rankMask'+(i+1)+')">'+(i+1)+'</text>'+
+        '</svg>'+
         '<div class="card card-poster" style="width:245px;height:338px;'+posterStylePortrait()+'">'+platformPill(plats[i])+'</div>'+
       '</div>';
     }).join('');
-    addRow('<div class="row-block"><div class="row-title">Top 10 in Thailand Today</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
+    addRow('<div class="row-block">'+
+      '<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="rankNumFill" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></linearGradient></defs></svg>'+
+      '<div class="row-title">Top 10 in Thailand Today</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
+    function layoutRankNums(){
+      var ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = '800 400px "Plus Jakarta Sans"';
+      document.querySelectorAll('.rank-num').forEach(function(svg){
+        var m = ctx.measureText(svg.dataset.n);
+        var k = 290 / m.actualBoundingBoxAscent;              // digit ink height 290px, as in Figma
+        var inkW = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) * k;
+        svg.querySelectorAll('text').forEach(function(t){
+          t.setAttribute('font-size', (400 * k).toFixed(1));
+          t.setAttribute('x', (m.actualBoundingBoxLeft * k).toFixed(1));
+          t.setAttribute('y', 315);
+        });
+        svg.setAttribute('width', Math.ceil(inkW));
+        svg.setAttribute('height', 338);
+        svg.parentElement.style.paddingLeft = Math.round(Math.min(169, inkW - 20)) + 'px';
+      });
+    }
+    layoutRankNums();
+    // Re-measure once the numeral font arrives; the ring may already sit on a Top 10 poster, so re-place it too.
+    if(document.fonts) document.fonts.load('800 400px "Plus Jakarta Sans"').then(function(){
+      layoutRankNums();
+      try{ placeHomeRing(true); }catch(e){}
+    });
     MOBILE_ROWS.push({title:'Top 10 in Thailand Today', type:'rank', items: titles.map(function(t,i){
       return {t:t, rank:i+1, plat:plats[i], img:nextPortraitUrl()};
     })});
@@ -941,7 +1033,7 @@
         '<div class="top-badges"><span class="pill-rank">#1 in thailand</span><span class="badge-live"><span class="dot"></span>Live</span></div>'+
         '<h3>Game of Thrones: House of the Dragon</h3>'+
         '<p class="desc">Set 200 years before the events of Game of Thrones, this epic series tells the story of House Targaryen.</p>'+
-        '<div class="chanrow"><span class="chanlogo">HBO MAX</span><span class="catchip">3 Seasons, 26 Episodes</span><span class="catchip">Action, Sci-fi</span><span class="catchip">PG-15+</span></div>'+
+        '<div class="chanrow"><img class="chan-tag-logo" src="badges/tag-hbo.png" alt="HBO Max"><span class="catchip">3 Seasons, 26 Episodes</span><span class="catchip">Action, Sci-fi</span><span class="catchip">PG-15+</span></div>'+
       '</div>'+
     '</div>';
     var posters = ['Prime Video pick','HBO Max pick','Disney+ pick','Netflix pick','Viu pick','Monomax pick'].map(function(t,i){
@@ -1002,30 +1094,32 @@
 
   /* ---------- Row: AIS Play Exclusive ---------- */
   (function(){
-    var heroCard = '<div class="card hero-pick item" data-title="Miss Universe Thailand 2026" style="background:'+gradAt(8,135)+';">'+
+    var heroCard = '<div class="card hero-pick item" data-title="Miss Universe Thailand 2026">'+
+      '<img class="bg" src="posters/miss-universe.jpg" alt="" style="width:100%;height:100%;object-fit:cover;">'+
       '<div class="scrim"></div>'+
       '<div class="content">'+
         '<div class="top-badges"><span class="pill-rank">#1 in thailand</span></div>'+
         '<h3>Miss Universe Thailand 2026</h3>'+
         '<p class="desc">The Miss Universe Thailand 2026 pageant is underway with provincial preliminaries and delegate selections, highlighted by Tharina Botes winning Miss Universe Krung Thep Maha Nakhon (Bangkok).</p>'+
-        '<div class="chanrow"><span class="chanlogo"><img src="icons/crown.png" alt="" style="width:15px;height:15px;object-fit:contain;vertical-align:-2px;margin-right:5px;">Premium</span><span class="catchip">1 hr. 55 min</span><span class="catchip">Action, Sci-fi</span><span class="catchip">PG-15+</span></div>'+
+        '<div class="chanrow"><span class="chanlogo"><img src="icons/crown-gold.svg" alt="" style="width:18px;height:18px;object-fit:contain;margin-right:6px;">Premium</span><span class="catchip">1 hr. 55 min</span><span class="catchip">Action, Sci-fi</span><span class="catchip">PG-15+</span></div>'+
       '</div>'+
     '</div>';
-    var portraits = ['Portrait pick 1','Portrait pick 2','Portrait pick 3','Portrait pick 4','Portrait pick 5','Portrait pick 6','Portrait pick 7','Portrait pick 8','Portrait pick 9','Portrait pick 10'];
+    var portraits = ['D-Day Rerun','BossCKM Dream Warrior','Man City vs Arsenal','Match Day: Man Utd vs Chelsea','Match Day: Man Utd vs Arsenal'];
     var cards = portraits.map(function(t,i){
-      return '<div class="portrait-card item" data-title="'+t+'"><div class="art" style="'+posterStylePortrait()+'"></div></div>';
+      return '<div class="portrait-card exclusive-card item" data-title="'+t+'"><img src="posters_portrait/ex'+(i+1)+'.jpg" alt="'+t+'"></div>';
     }).join('');
-    addRow('<div class="row-block"><div class="row-title">AIS Play Exclusive</div><div class="rail-viewport"><div class="rail-track">'+heroCard+cards+'</div></div></div>');
+    addRow('<div class="row-block toppick-row"><div class="row-title">AIS Play Exclusive</div><div class="rail-viewport"><div class="rail-track">'+heroCard+cards+'</div></div></div>');
     MOBILE_ROWS.push({title:'AIS Play Exclusive', type:'mixed', items: [
-      {kind:'editorial', t:'Miss Universe Thailand 2026', sub:'Premium', grad:gradAt(8,135),
+      {kind:'editorial', t:'Miss Universe Thailand 2026', sub:'Premium', img:'posters/miss-universe.jpg',
         desc:'The Miss Universe Thailand 2026 pageant is underway with provincial preliminaries and delegate selections.'}
-    ].concat(portraits.map(function(t){ return {kind:'poster', t:t, img:nextPortraitUrl()}; }))});
+    ].concat(portraits.map(function(t,i){ return {kind:'poster', t:t, img:'posters_portrait/ex'+(i+1)+'.jpg'}; }))});
   })();
 
   /* ---------- Row: Ad banner ---------- */
   (function(){
     addRow('<div class="row-block"><div class="rail-viewport"><div class="rail-track">'+
-      '<div class="ad-banner item" data-title="Under the mistletoe" style="background:'+gradAt(2,120)+';">'+
+      '<div class="ad-banner item" data-title="Under the mistletoe">'+
+        '<img class="art" src="posters/mistletoe.png" alt="">'+
         '<div class="txt"><h3>Under the mistletoe</h3><div class="cta">Step inside &#8594;</div></div>'+
       '</div>'+
     '</div></div></div>');
@@ -1035,9 +1129,7 @@
   posterRail('Grab The Mic!', [
     {t:'Sabai Sabi – Thongchai McIntyre'}, {t:'Mae – Loso'},
     {t:'Do You Want Me to Stay With You – Asanee-Wasan'}, {t:'Let It Be – The Beatles'},
-    {t:'Take Me Home, Country Roads – John Denver'}, {t:'Wanipok – Carabao'},
-    {t:'Rak Na Dek Ngo – Pancake'}, {t:'Ting Nong Noy – Bodyslam'},
-    {t:'Perfect – Ed Sheeran'}, {t:'Shape of You – Ed Sheeran'}
+    {t:'Take Me Home, Country Roads – John Denver'}, {t:'Wanipok – Carabao'}
   ], 7);
   /* replace last row's plain posters with karaoke styled cards */
   (function(){
@@ -1045,24 +1137,28 @@
     var songs = [
       ['Sabai Sabi','Thongchai McIntyre'], ['Mae','Loso'],
       ['Do You Want Me to Stay With You','Asanee-Wasan'], ['Let It Be','The Beatles'],
-      ['Take Me Home, Country Roads','John Denver'], ['Wanipok','Carabao'],
-      ['Rak Na Dek Ngo','Pancake'], ['Ting Nong Noy','Bodyslam'],
-      ['Perfect','Ed Sheeran'], ['Shape of You','Ed Sheeran']
+      ['Take Me Home, Country Roads','John Denver'], ['Wanipok','Carabao']
     ];
     var cards = songs.map(function(s,i){
       return '<div class="card-karaoke item" data-title="'+s[0]+' – '+s[1]+'">'+
-        '<div class="art" style="background:'+gradAt(i+7,150)+';"></div>'+
+        '<img class="art" src="posters/karaoke/k'+(i+1)+'.jpg" alt="">'+
         '<div class="meta"><div class="song">'+s[0]+'</div><div class="artist">'+s[1]+'</div></div>'+
       '</div>';
     }).join('');
     last.track.innerHTML = cards;
+    last.track.classList.add('karaoke-track');
+    MOBILE_ROWS[MOBILE_ROWS.length-1].items.forEach(function(it,i){ it.img = 'posters/karaoke/k'+(i+1)+'.jpg'; });
   })();
 
   /* ---------- Row: Choose What I See ---------- */
   (function(){
     addRow('<div class="row-block"><div class="rail-viewport"><div class="rail-track">'+
       '<div class="personalize item" data-title="Customize">'+
-        '<div class="bg"></div>'+
+        '<img class="glow" src="posters/customize/glow.svg" alt="">'+
+        [-664,-332,0,332,664].map(function(off,i){
+          return '<div class="cz-poster'+(i<2?' low':'')+'" style="left:'+(869+off-150)+'px;"><img src="posters/customize/c'+(5-i)+'.jpg" alt=""></div>';
+        }).join('')+
+        '<div class="tint"></div>'+
         '<div class="inner"><h3>Choose What I See</h3><div class="btn-customize">Customize</div></div>'+
       '</div>'+
     '</div></div></div>');
@@ -1493,7 +1589,7 @@
   var homeRing = document.createElement('div');
   homeRing.className = 'home-ring';
   homeRing.setAttribute('aria-hidden', 'true');
-  homeRing.innerHTML = '<div class="glass"><i></i><i></i></div>';
+  homeRing.innerHTML = '<div class="glass"><i></i><i></i></div><div class="ring-badge"></div>';
   tvFrame.appendChild(homeRing);
   var ringLayers = homeRing.querySelectorAll('.glass i'), ringFront = 0, ringArt = null;
   var ringCur = null, ringRaf = 0, ringLastT = 0, ringBusyUntil = 0;
@@ -1566,10 +1662,22 @@
     drawRing(ringCur);
     homeRing.classList.add('on');
     if(p < 1) ringRaf = requestAnimationFrame(ringTick);
-    else { ringRaf = 0; ringFrom = null; }
+    else { ringRaf = 0; ringFrom = null; showRingBadge(el); }
+  }
+  // Once the ring has settled on a card with a hanging badge (the Live ribbon), show a copy of that badge inside
+  // the ring at the same spot, scaled like the card, so it overlaps the ring instead of being covered by it.
+  var ringBadge = homeRing.querySelector('.ring-badge');
+  function showRingBadge(el){
+    var b = el.querySelector(':scope > .card-badge-corner');
+    if(!b || !b.classList.contains('ribbon')){ ringBadge.classList.remove('on'); return; }
+    var k = getScale() * focusScale(el), pad = RING_W * getScale();
+    ringBadge.innerHTML = b.outerHTML;
+    ringBadge.style.transform = 'translate(' + pad + 'px,' + pad + 'px) scale(' + k + ')';
+    ringBadge.classList.add('on');
   }
   function placeHomeRing(snap){
     var el = ringTarget(); if(!el) return;
+    ringBadge.classList.remove('on');
     var art = artOf(el);
     if(art !== ringArt){
       if(ringCur && !snap) ringFront = 1 - ringFront;
