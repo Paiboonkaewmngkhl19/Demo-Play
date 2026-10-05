@@ -543,16 +543,6 @@ export default function App() {
               </motion.div>
             </div>
 
-            {CAME_FROM_PICKER && tab === "Shorts" && (
-              <button
-                onClick={exitToPicker}
-                aria-label="Back"
-                className="absolute left-3 z-20 w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ top: isPhone ? "calc(env(safe-area-inset-top, 0px) + 8px)" : STATUS_H + 4, background: "rgba(0,0,0,0.6)" }}
-              >
-                <ArrowLeft size={18} className="text-white" />
-              </button>
-            )}
 
             {/* seek handle, in front of the nav */}
             {seekUi.scrubbing && (
