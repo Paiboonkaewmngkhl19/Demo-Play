@@ -39,16 +39,17 @@ const GUIDE = [
 ];
 
 type ChanBadge = "live" | "hot" | "new";
-const CHANNELS: { t: string; img: string; badge?: ChanBadge; dark?: boolean }[] = [
-  { t: "Asian Games 2026 · 902", img: a("tv-features-test/live-stream-assets/channel-asian-games.png"), badge: "live" },
-  { t: "Asian Games 2026 · 907", img: a("tv-features-test/shorts-assets/channel-907.png"), badge: "live" },
-  { t: "PLAY Sports 61", img: a("icons/channels/playsports.png"), badge: "live", dark: true },
-  { t: "Warner TV", img: a("icons/channels/wbtv.png"), badge: "hot" },
-  { t: "HBO", img: a("icons/channels/hbo.png"), badge: "hot" },
-  { t: "HBO Hits", img: a("icons/channels/hbohits.png"), badge: "new" },
-  { t: "HBO Family", img: a("icons/channels/hbofamily.png") },
-  { t: "Cinemax", img: a("icons/channels/cinemax.png") },
-  { t: "Rock Entertainment", img: a("icons/channels/rock.png") },
+// n: card name, no: channel number, pr: premium crown (same as the TV Home's Hot Channels)
+const CHANNELS: { t: string; n: string; no: string; img: string; badge?: ChanBadge; dark?: boolean; pr?: boolean }[] = [
+  { t: "Asian Games 2026 · 902", n: "Asian Games", no: "902", img: a("tv-features-test/live-stream-assets/channel-asian-games.png"), badge: "live" },
+  { t: "Asian Games 2026 · 907", n: "Asian Games", no: "907", img: a("tv-features-test/shorts-assets/channel-907.png"), badge: "live" },
+  { t: "PLAY Sports 61", n: "PLAY Sports", no: "61", img: a("icons/channels/playsports.png"), badge: "live", dark: true, pr: true },
+  { t: "Warner TV", n: "Warner TV", no: "230", img: a("icons/channels/wbtv.png"), badge: "hot", pr: true },
+  { t: "HBO", n: "HBO", no: "251", img: a("icons/channels/hbo.png"), badge: "hot", pr: true },
+  { t: "HBO Hits", n: "HBO Hits", no: "252", img: a("icons/channels/hbohits.png"), badge: "new", pr: true },
+  { t: "HBO Family", n: "HBO Family", no: "253", img: a("icons/channels/hbofamily.png"), pr: true },
+  { t: "Cinemax", n: "Cinemax", no: "255", img: a("icons/channels/cinemax.png"), pr: true },
+  { t: "Rock Entertainment", n: "Rock", no: "260", img: a("icons/channels/rock.png") },
 ];
 const RING: Record<ChanBadge, string> = { live: "#ff0000", hot: "#e7007e", new: "#b8f416" };
 
@@ -374,26 +375,37 @@ export default function HomeScreen({
             ))}
           </Rail>
 
-          {/* Hot Channel */}
-          <Rail title="Hot Channel" gap={12} padBottom={10}>
+          {/* Hot Channel (Figma PLAY-player "Mobile", 1310:47169): 104px frosted cards — avatar with LIVE / HOT / NEW
+              ring + label, the channel name, then a premium crown and the channel number */}
+          <Rail title="Hot Channel" gap={8}>
             {CHANNELS.map(c => (
-              <button key={c.t} onClick={() => demo(c.t)} aria-label={c.t} className="relative shrink-0" style={{ width: 56, height: 56 }}>
-                {c.badge && <span className="absolute inset-0 rounded-full" style={{ border: `2.8px solid ${RING[c.badge]}` }} />}
-                {c.badge === "live" && <span className="absolute inset-0 rounded-full pointer-events-none chan-ripple" style={{ border: "2px solid #ff0000" }} />}
-                <span className={"absolute rounded-full overflow-hidden flex items-center justify-center" + (c.badge === "live" ? " chan-breathe" : "")}
-                  style={{ inset: c.badge ? 5 : 0, background: c.dark ? "#404045" : "#fff" }}>
-                  <img src={c.img} alt="" className="w-full h-full" style={{ objectFit: c.dark || c.img.includes("tv-features-test") ? "cover" : "contain", padding: c.dark || c.img.includes("tv-features-test") ? 0 : 4 }} />
-                </span>
-                {c.badge && (
-                  <span className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-[2px]"
-                    style={{
-                      top: 48, height: 15, minWidth: 30, padding: "0 4px", fontSize: 11, fontWeight: 700, lineHeight: 1,
-                      background: c.badge === "hot" ? "linear-gradient(90deg,#e7007e,#ff048d 50%,#ff3aa6)" : RING[c.badge],
-                      color: c.badge === "new" ? "#111" : "#fff",
-                    }}>
-                    {c.badge === "live" ? "LIVE" : c.badge === "hot" ? "Hot" : "New"}
+              <button key={c.t} onClick={() => demo(c.t)} aria-label={c.t} className="shrink-0 flex flex-col items-center rounded-[8px]"
+                style={{ width: 104, padding: 8, background: "linear-gradient(180deg, rgba(161,161,161,.25), rgba(65,65,65,.25))", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+                <span className="flex justify-center" style={{ width: 72, height: 72, paddingTop: 2 }}>
+                  <span className="relative" style={{ width: 56, height: 56 }}>
+                    {c.badge && <span className="absolute inset-0 rounded-full" style={{ border: `1.4px solid ${RING[c.badge]}` }} />}
+                    {c.badge === "live" && <span className="absolute inset-0 rounded-full pointer-events-none chan-ripple" style={{ border: "1.4px solid #ff0000" }} />}
+                    <span className={"absolute rounded-full overflow-hidden flex items-center justify-center" + (c.badge === "live" ? " chan-breathe" : "")}
+                      style={{ inset: c.badge ? 2.8 : 0, background: c.dark ? "#404045" : "#fff" }}>
+                      <img src={c.img} alt="" className="w-full h-full" style={{ objectFit: c.dark || c.img.includes("tv-features-test") ? "cover" : "contain", padding: c.dark || c.img.includes("tv-features-test") ? 0 : 4 }} />
+                    </span>
+                    {c.badge && (
+                      <span className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-[2px]"
+                        style={{
+                          bottom: -9, width: 32, height: 14, fontSize: 10, fontWeight: 600, letterSpacing: -0.24, lineHeight: 1,
+                          background: c.badge === "hot" ? "linear-gradient(90deg,#e7007e,#ff048d 50%,#ff3aa6)" : RING[c.badge],
+                          color: c.badge === "new" ? "#000" : "#fff",
+                        }}>
+                        {c.badge.toUpperCase()}
+                      </span>
+                    )}
                   </span>
-                )}
+                </span>
+                <span className="w-full truncate text-center text-white" style={{ fontSize: 14 }}>{c.n}</span>
+                <span className="flex items-center justify-center gap-2" style={{ marginTop: 8 }}>
+                  {c.pr && <img src={iconCrown} alt="Premium" style={{ width: 16, height: 16 }} />}
+                  <span className="flex items-center justify-center rounded-[4px] text-white" style={{ width: 39, height: 22, background: "#000", fontSize: 12, fontWeight: 600 }}>{c.no}</span>
+                </span>
               </button>
             ))}
           </Rail>
@@ -429,7 +441,7 @@ export default function HomeScreen({
           </Rail>
 
           {/* Shorts: opens the Shorts tab at that short */}
-          <Rail title="Shorts" more onMore={() => onOpenShort(0)} gap={12}>
+          <Rail title="Clips" more onMore={() => onOpenShort(0)} gap={12}>
             {shorts.map((sh, i) => (
               <button key={sh.img} onClick={() => onOpenShort(i)} aria-label={sh.title} className="relative shrink-0 overflow-hidden rounded-[12px]" style={{ width: 104, height: 156 }}>
                 <img src={sh.img} alt="" className="w-full h-full object-cover" />
@@ -458,6 +470,13 @@ export default function HomeScreen({
         @keyframes chanBreathe{0%,100%{transform:scale(1)}50%{transform:scale(.92)}}
         @keyframes chanRipple{0%{transform:scale(.96);opacity:.9}100%{transform:scale(1.25);opacity:0}}
         @media (prefers-reduced-motion: reduce){.chan-breathe,.chan-ripple{animation:none}}
+        /* provider tag logos: a rounded square in the logo's own colour (channel logos stay round) */
+        img[src*="badges/tag-"]{border-radius:6px !important;}
+        img[src*="badges/tag-netflix"], img[src*="badges/tag-hbo"]{background:#000 !important;}
+        img[src*="badges/tag-prime"]{background:#1a98ff !important;}
+        img[src*="badges/tag-disney"]{background:#042437 !important;}
+        img[src*="badges/tag-viu"]{background:#ffbf00 !important;}
+        img[src*="badges/tag-monomax"]{background:#fff !important;}
         .home-scroll{scrollbar-width:none}.home-scroll::-webkit-scrollbar,.home-rail::-webkit-scrollbar{display:none}.home-rail{scrollbar-width:none}`}</style>
     </div>
   );

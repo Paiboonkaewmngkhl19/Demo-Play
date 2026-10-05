@@ -344,27 +344,85 @@
   .epg-heart img{width:24px;height:24px;object-fit:contain;display:block;}
   .epg-next{background:#525252;padding:20px 18px;display:flex;flex-direction:column;gap:6px;flex:1;}   /* fills the card to its bottom edge (the rail stretches cards to 280px) */
 
-  /* hot channels: 160px round avatars; a live channel gets a 4px red ring and a LIVE label hanging off the bottom */
-  .channel-row .rail-track{gap:24px;align-items:flex-start;padding-bottom:28px;}
-  .chan-avatar{position:relative;width:160px;height:160px;border-radius:80px;flex:0 0 auto;}   /* px, so the focus ring rounds to a circle too */
+  /* hot channels (Figma PLAY-player "Hot channel", 1312:50479): a 190 x 262 frosted card per channel with a 112px round
+     avatar (LIVE / Hot / New ring + label), the channel name, then a premium crown and the channel number */
+  .channel-row .rail-track{gap:24px;align-items:flex-start;}
+  .chan-card{width:190px;height:262px;box-sizing:border-box;padding:20px;border-radius:16px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+    background:linear-gradient(180deg, rgba(161,161,161,.25), rgba(65,65,65,.25));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+  .chan-card .chan-slot{width:150px;height:150px;flex:0 0 auto;display:flex;justify-content:center;padding-top:8px;box-sizing:border-box;}
+  .chan-card .chan-name{width:100%;font-size:24px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chan-card .chan-meta{display:flex;align-items:center;gap:16px;margin-top:12px;}
+  .chan-card .chan-meta img{width:20px;height:20px;display:block;}
+  .chan-card .chan-no{height:32px;min-width:40px;box-sizing:border-box;padding:0 12px;border-radius:8px;background:#0a0a0a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;}
+  .chan-avatar{position:relative;width:112px;height:112px;border-radius:56px;flex:0 0 auto;}
   .chan-disc{position:absolute;inset:0;border-radius:50%;overflow:hidden;}
   .chan-disc img{position:absolute;display:block;max-width:none;}
-  .chan-avatar.live .chan-disc, .chan-avatar.tagged .chan-disc{inset:8px;}
-  .chan-avatar.live::before, .chan-avatar.tagged::before{content:'';position:absolute;inset:0;border:4px solid var(--chan-ring,#f00);border-radius:50%;}
+  .chan-avatar.live .chan-disc, .chan-avatar.tagged .chan-disc{inset:5.6px;}
+  .chan-avatar.live::before, .chan-avatar.tagged::before{content:'';position:absolute;inset:0;border:2.8px solid var(--chan-ring,#f00);border-radius:50%;}
   /* Figma "Hot" (pink) and "New" (lime) channels: same ring + label as LIVE, in their own colour, no animation */
   .chan-avatar.tag-hot{--chan-ring:#e7007e;}
   .chan-avatar.tag-new{--chan-ring:#b8f416;}
   .chan-live.chan-tag-hot{background:linear-gradient(90deg,#e7007e,#ff048d 50%,#ff3aa6);}
   .chan-live.chan-tag-new{background:#b8f416;color:#111;}
   /* TikTok-style live: the red ring stays still; the logo breathes and a second ring ripples outward and fades, on a loop */
-  .chan-avatar.live::after{content:'';position:absolute;inset:0;border:3px solid #f00;border-radius:50%;pointer-events:none;
+  .chan-avatar.live::after{content:'';position:absolute;inset:0;border:2px solid #f00;border-radius:50%;pointer-events:none;
     animation:chanRipple 1.4s ease-out infinite;}
   .chan-avatar.live .chan-disc{animation:chanBreathe 1.4s ease-in-out infinite;}
   @keyframes chanBreathe{ 0%,100%{transform:scale(1);} 50%{transform:scale(.94);} }
   @keyframes chanRipple{ 0%{transform:scale(.96);opacity:.9;} 100%{transform:scale(1.22);opacity:0;} }
   @media (prefers-reduced-motion: reduce){ .chan-avatar.live::after, .chan-avatar.live .chan-disc{animation:none;} }
-  .chan-live{position:absolute;left:36px;top:146px;width:88px;height:40px;background:#f00;border-radius:2px;
-    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:600;letter-spacing:-.24px;color:#fff;z-index:2;}
+  .chan-live{position:absolute;left:24px;top:102px;width:64px;height:24px;background:#f00;border-radius:2px;
+    display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;letter-spacing:-.24px;color:#fff;z-index:2;}
+
+  /* Clips rail (Figma Home 2002:105733) */
+  /* the artwork band: 56px above the title, and the cards centred in it (as much room below them as above:
+     56 + title 39 + 28 = 123px); then the usual 56px to the rails around it */
+  .clips-row{padding:56px 0 123px;margin-bottom:56px;}
+  .clips-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:url('posters/clips-bg.jpg') center / cover no-repeat;
+    /* fades to transparent top and bottom, so it melts into whatever is behind the page (Figma: 1.8–17% / 83.5–100%) */
+    -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+    mask-image:linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);}
+  .clips-row .row-title{text-shadow:0 2px 10px rgba(0,0,0,.7);}
+  /* artwork toned down (less colour, darker) with a dark overlay fading in from the top and bottom edges */
+  .clips-bg{filter:saturate(.6) brightness(.6);}
+  .clips-row::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:linear-gradient(180deg, rgba(10,7,20,.85) 0%, rgba(10,7,20,0) 32%, rgba(10,7,20,0) 62%, rgba(10,7,20,.9) 100%);}
+  .clips-row .rail-track{gap:32px;align-items:stretch;}
+  .clip-card{position:relative;width:245px;height:338px;border-radius:9px;   /* same as the poster rails (Anti-Hero Legal Drama) */ flex:0 0 auto;background-size:cover;background-position:center;box-shadow:0 8px 24px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4);}
+  .clip-badge{position:absolute;left:12px;max-width:221px;box-sizing:border-box;padding:0 12px;border-radius:18px;color:#fff;
+    /* the violet → magenta → orange of the brand numeral art */
+    background:linear-gradient(115deg, #4a1fb8 0%, #a8268a 55%, #c8862f 110%);
+    box-shadow:inset -1px 2px 10px rgba(255,255,255,.28);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);text-shadow:0 1px 3px rgba(0,0,0,.35);
+    font-size:20px;font-weight:500;line-height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .clip-top{top:12px;}
+  .clip-logo{position:absolute;left:12px;bottom:12px;width:60px;height:40px;object-fit:contain;border-radius:10px;display:block;}   /* same tag logo as the other rails */
+  .clip-logo.round{width:44px;height:44px;border-radius:50%;object-fit:cover;background:#fff;}
+  /* View All: same tile as the TV Guide's "TV Guide / View All" pill */
+  .clip-viewall{width:180px;border-radius:999px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    background:rgba(255,255,255,.15);box-shadow:inset -1px 3px 17px rgba(255,255,255,.16);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff;}
+  .clip-viewall b{font-size:28px;font-weight:700;}
+  .clip-viewall span{font-size:22px;font-weight:400;opacity:.9;}
+  /* provider tag logos (badges/tag-*.png) are drawn as ovals on a transparent corner: everywhere on the page they
+     sit on a rounded square filled with the logo's own colour (channel logos stay round) */
+  img[src*="badges/tag-"]{border-radius:6px !important;}
+  img[src*="badges/tag-netflix"], img[src*="badges/tag-hbo"]{background:#000 !important;}
+  img[src*="badges/tag-prime"]{background:#1a98ff !important;}
+  img[src*="badges/tag-disney"]{background:#042437 !important;}
+  img[src*="badges/tag-viu"]{background:#ffbf00 !important;}
+  img[src*="badges/tag-monomax"]{background:#fff !important;}
+
+  /* Quick Access chips (Figma 718:94195) */
+  .quick-row .rail-track{gap:32px;}
+  .quick-chip{width:401px;height:110px;box-sizing:border-box;border-radius:16px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;padding:16px;
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,.12) 6%, rgba(255,255,255,.3) 100%);
+    box-shadow:inset -1px 3px 16px rgba(255,255,255,.16);border:3px solid transparent;
+    transition:border-radius .22s cubic-bezier(.2,0,0,1), background .22s ease, border-color .22s ease;}
+  .quick-chip span{font-size:28px;font-weight:400;line-height:1.2;color:#fff;text-shadow:0 4px 10px rgba(0,0,0,.5);white-space:nowrap;}
+  .quick-chip.focused{border-radius:99px;border-color:transparent;   /* the focus ring is the only outline */
+    background:linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15)), radial-gradient(ellipse 120% 160% at 12% 90%, rgba(157,152,224,.24) 6%, rgba(157,152,224,.6) 100%);}
+  .quick-chip.focused span{font-size:32px;font-weight:700;text-shadow:0 4px 10px rgba(0,0,0,.25);}
+  .quick-row .item.focused{transform:none;}   /* the chip changes shape instead of growing */
 
   /* partner */
   .partner-row .rail-track{align-items:center;}
@@ -978,24 +1036,30 @@
   /* ---------- Row: Hot Channels (Figma "Hot channel": round 160px channel avatars) ---------- */
   (function(){
     // img box: [left, top, width, height] in % of the circle (Figma's crop), or null to cover it
+    // n: name on the card, no: channel number, pr: premium (gold crown). Logos reused from the previous rail.
     var chans = [
-      {t:'Asian Games 2026 · 902', src:'tv-features-test/live-stream-assets/channel-asian-games.png', bg:'#fff', live:true},   // same logos as the Clips/Reels demo
-      {t:'Asian Games 2026 · 907', src:'tv-features-test/shorts-assets/channel-907.png', bg:'#fff', live:true},
-      {t:'PLAY Sports 61', img:'playsports.png', bg:'#404045', live:true},
-      {t:'Warner TV', img:'wbtv.png', bg:'#fff', box:[10.88,12.81,80.09,74.91], tag:'hot'},
-      {t:'HBO', img:'hbo.png', bg:'#fff', tag:'hot'},
-      {t:'HBO Hits', img:'hbohits.png', bg:'#fff', box:[0,17.28,95.67,65.54], tag:'new'},
-      {t:'HBO Family', img:'hbofamily.png', bg:'#fff', box:[-0.11,22.3,108.43,66.07]},
-      {t:'HBO Signature', img:'hbosignature.png', bg:'#fff', box:[-17.36,23.71,114.25,52.53]},
-      {t:'Cinemax', img:'cinemax.png', bg:'#fff', box:[5.54,25.24,88.79,50]},
-      {t:'Rock Entertainment', img:'rock.png', bg:'#fff', box:[-11.46,24.55,120.21,51.94]}
+      {t:'Asian Games 2026 · 902', n:'Asian Games', no:'902', src:'tv-features-test/live-stream-assets/channel-asian-games.png', bg:'#fff', live:true},
+      {t:'Asian Games 2026 · 907', n:'Asian Games', no:'907', src:'tv-features-test/shorts-assets/channel-907.png', bg:'#fff', live:true},
+      {t:'PLAY Sports 61', n:'PLAY Sports', no:'61', img:'playsports.png', bg:'#404045', live:true, pr:true},
+      {t:'Warner TV', n:'Warner TV', no:'230', img:'wbtv.png', bg:'#fff', box:[10.88,12.81,80.09,74.91], tag:'hot', pr:true},
+      {t:'HBO', n:'HBO', no:'251', img:'hbo.png', bg:'#fff', tag:'hot', pr:true},
+      {t:'HBO Hits', n:'HBO Hits', no:'252', img:'hbohits.png', bg:'#fff', box:[0,17.28,95.67,65.54], tag:'new', pr:true},
+      {t:'HBO Family', n:'HBO Family', no:'253', img:'hbofamily.png', bg:'#fff', box:[-0.11,22.3,108.43,66.07], pr:true},
+      {t:'HBO Signature', n:'HBO Sig.', no:'254', img:'hbosignature.png', bg:'#fff', box:[-17.36,23.71,114.25,52.53], pr:true},
+      {t:'Cinemax', n:'Cinemax', no:'255', img:'cinemax.png', bg:'#fff', box:[5.54,25.24,88.79,50], pr:true},
+      {t:'Rock Entertainment', n:'Rock', no:'260', img:'rock.png', bg:'#fff', box:[-11.46,24.55,120.21,51.94]}
     ];
     var html = chans.map(function(c){
       var b = c.box, st = b ? 'left:'+b[0]+'%;top:'+b[1]+'%;width:'+b[2]+'%;height:'+b[3]+'%;' : 'inset:0;width:100%;height:100%;object-fit:cover;';
-      return '<div class="chan-avatar item'+(c.live?' live':'')+(c.tag?' tagged tag-'+c.tag:'')+'" data-title="'+c.t+'">'+
-        '<div class="chan-disc" style="background:'+c.bg+';"><img src="'+(c.src || 'icons/channels/'+c.img)+'" alt="'+c.t+'" style="'+st+'"></div>'+
-        (c.live ? '<span class="chan-live">LIVE</span>' : '')+
-        (c.tag ? '<span class="chan-live chan-tag-'+c.tag+'">'+(c.tag === 'hot' ? 'Hot' : 'New')+'</span>' : '')+
+      // data-ring-art="": the focus ring uses plain frosted glass, not a blur of the logo
+      return '<div class="chan-card item'+(c.live?' live':'')+'" data-title="'+c.t+'" data-ring-art="">'+
+        '<div class="chan-slot"><div class="chan-avatar'+(c.live?' live':'')+(c.tag?' tagged tag-'+c.tag:'')+'">'+
+          '<div class="chan-disc" style="background:'+c.bg+';"><img src="'+(c.src || 'icons/channels/'+c.img)+'" alt="'+c.t+'" style="'+st+'"></div>'+
+          (c.live ? '<span class="chan-live">LIVE</span>' : '')+
+          (c.tag ? '<span class="chan-live chan-tag-'+c.tag+'">'+(c.tag === 'hot' ? 'HOT' : 'NEW')+'</span>' : '')+
+        '</div></div>'+
+        '<div class="chan-name">'+c.n+'</div>'+
+        '<div class="chan-meta">'+(c.pr ? '<img src="icons/crown-gold.svg" alt="Premium">' : '')+'<span class="chan-no">'+c.no+'</span></div>'+
       '</div>';
     }).join('');
     addRow('<div class="row-block channel-row"><div class="row-title">Hot Channels</div><div class="rail-viewport"><div class="rail-track">'+html+'</div></div></div>');
@@ -1232,6 +1296,35 @@
     })});
   })();
 
+  /* ---------- Row: Clips (Figma Home "Clips", 2002:105733) ----------
+     A full-width artwork band behind the rail (fading into the page top and bottom), 220 x 330 clip cards with an
+     optional top badge (New / Soon Leaving) and a platform chip, then a View All pill. Stills reused from the Clips app. */
+  (function(){
+    // card pictures: a frame of each clip's video with the people in it, cropped to 2:3 (posters/clips/)
+    var C = 'posters/clips/';
+    // logo: the provider's tag logo (as on other rails), or a round channel logo (Asian Games, Cool Channel)
+    var AG = 'tv-features-test/live-stream-assets/channel-asian-games.png';
+    var clips = [
+      {t:'Japan vs Thailand', img:C+'football.jpg?v=2', chan:AG},
+      {t:'Spider-Man: Brand New Day', img:C+'spider.jpg?v=2', pos:'center 100%', tag:'netflix', top:'New'},
+      {t:'Thailand vs China · Volleyball', img:C+'vall.jpg?v=2', chan:AG},
+      {t:'New HBO Original Series', img:C+'hbo.jpg', tag:'hbo', top:'Soon Leaving'},
+      {t:'Thailand vs Singapore · Badminton', img:C+'bad.jpg', chan:AG},
+      {t:'Avengers: Doomsday', img:C+'dis.jpg?v=2', tag:'disney'},
+      {t:'Love Island All Stars', img:C+'all.jpg', tag:'netflix'},
+      {t:'Special Offer · Herbal Tonic', img:C+'cool.jpg', chan:'tv-features-test/concert-assets/channel-cool.png'},
+      {t:'Love Language — Dance Break', img:C+'concert.jpg', tag:'viu', top:'New'}
+    ];
+    var cards = clips.map(function(c){
+      return '<div class="card clip-card item" data-title="'+c.t+'" style="background-image:url(\''+c.img+'\');'+(c.pos ? 'background-position:'+c.pos+';' : '')+'">'+
+        (c.top ? '<span class="clip-badge clip-top">'+c.top+'</span>' : '')+
+        (c.tag ? '<img class="clip-logo" src="badges/tag-'+c.tag+'.png" alt="'+c.tag+'">' : '<img class="clip-logo round" src="'+c.chan+'" alt="">')+
+      '</div>';
+    }).join('') + '<div class="clip-viewall item" data-title="Clips – View All" data-ring-art=""><b>Clips</b><span>View All</span></div>';
+    addRow('<div class="row-block clips-row"><div class="clips-bg"></div><div class="row-title">Clips</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
+    MOBILE_ROWS.push({title:'Clips', type:'poster', items: clips.map(function(c){ return {t:c.t, img:c.img}; })});
+  })();
+
   posterRail('Anti-Hero Legal Drama', [
     {t:'Thai Lawyer', plat:'netflix', img:'posters_portrait/legal/l1.jpg', d:'A ruthless Bangkok lawyer will defend anyone for the right price, until one case turns personal.'},
     {t:'One Dollar Lawyer', plat:'disney', img:'posters_portrait/legal/l2.jpg', d:'A genius lawyer who charges just one dollar takes on the powerful on behalf of people with nothing.'},
@@ -1365,6 +1458,17 @@
   });
   MOBILE_ROWS.forEach(function(r){ (r.items || []).forEach(function(it){ if(it.img && /(F1|\/f1)\.jpg$/.test(it.img) && it.plat) it.plat = 'prime'; }); });
 
+  /* ---------- Row: Quick Access (Figma "section_customize_content", 718:94195) ----------
+     Four 401 x 110 frosted chips in a 4-column row; the focused one turns into a lilac pill (Figma shows it on
+     Manage Subscription). */
+  (function(){
+    var chips = ['Manage Subscription', 'My Rental', 'FAQs', 'Setting'];
+    addRow('<div class="row-block quick-row"><div class="row-title">Quick Access</div><div class="rail-viewport"><div class="rail-track">'+
+      chips.map(function(c){ return '<div class="quick-chip item" data-title="'+c+'" data-ring-art=""><span>'+c+'</span></div>'; }).join('')+
+    '</div></div></div>');
+    MOBILE_ROWS.push({title:'Quick Access', type:'chip', items: chips.map(function(c){ return {t:c}; })});
+  })();
+
   var spacer = document.createElement('div');
   spacer.className = 'end-spacer';
   root.appendChild(spacer);
@@ -1389,7 +1493,7 @@
   var RING_W_DESIGN = 8;
   // the scale an item grows to when focused (matches the .focused rules in the CSS)
   function focusScale(el){
-    if(el.matches('.ad-banner, .personalize')) return 1;
+    if(el.matches('.ad-banner, .personalize, .quick-chip')) return 1;
     if(el.closest('.topnav')) return 1.06;
     if(el.closest('.toppick-row')) return 1.05;
     return 1.07;   // every rail item, Top 10 posters included
