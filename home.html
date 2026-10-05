@@ -2,7 +2,7 @@
 <title>Stream Home Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-0:#0a0714;
@@ -23,7 +23,27 @@
     --focus-ring:rgba(255,255,255,0.95);
     --focus-glow:rgba(165,139,212,0.85);
     --font-display:'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    /* theme (popup "Choose Theme color", Figma For-PBR 718:95415 / 684:88421 / 684:88297 / 684:88259): each theme
+       recolours the Top 10 numerals, the TV Guide / Clips View All pill and the Customize panel, over a dark navy page.
+       Modern Magenta is the default. */
+    --bg-0:#070e16;
+    --th-a:#7a21ed; --th-b:#a8268a; --th-c:#ed914c; --th-glow:rgba(122,33,237,.22);
+    --th-n1:#9b1fb0; --th-n2:#6b21a8;
+    --th-pill:linear-gradient(170deg, #b0268f 0%, #7d2a8c 45%, #4a2a64 100%);
+    --th-panel:linear-gradient(100deg, #5a1a74 0%, #3a1f5c 45%, #2a1b4f 100%);
   }
+  body.theme-green  { --th-a:#1f6b3d; --th-b:#50bfa1; --th-c:#79c981; --th-glow:rgba(80,191,161,.2);
+    --th-n1:#1dbfd9; --th-n2:#79c981;
+    --th-pill:linear-gradient(170deg, #6fbf74 0%, #3fa287 45%, #2f7f8a 100%);
+    --th-panel:linear-gradient(100deg, #12644f 0%, #1a5a5e 45%, #173a5e 100%); }
+  body.theme-vibrant{ --th-a:#a93f07; --th-b:#fe5a01; --th-c:#1a90dd; --th-glow:rgba(254,90,1,.18);
+    --th-n1:#fe5a01; --th-n2:#016aea;
+    --th-pill:linear-gradient(160deg, #e0601a 0%, #8a5a7a 50%, #2a5be0 100%);
+    --th-panel:linear-gradient(100deg, #8a3a10 0%, #4a2f4a 45%, #1d3f8a 100%); }
+  body.theme-cyan   { --th-a:#016aea; --th-b:#1dbfd9; --th-c:#5486db; --th-glow:rgba(29,191,217,.2);
+    --th-n1:#1dbfd9; --th-n2:#016aea;
+    --th-pill:linear-gradient(160deg, #1fc0a8 0%, #2a8fc0 50%, #1d4fd8 100%);
+    --th-panel:linear-gradient(100deg, #10a08c 0%, #156a8a 45%, #173a8a 100%); }
   *{box-sizing:border-box;}
   html,body{background:#000;height:100%;}
   body{
@@ -47,7 +67,8 @@
   #tv-frame{
     position:relative;
     overflow:hidden;
-    background:var(--bg-0);   /* page colour behind the hero picture and the rows */
+    background:radial-gradient(1400px 900px at 85% 110%, var(--th-glow), transparent 70%), var(--bg-0);   /* page colour behind the hero picture and the rows, with a glow in the theme colour */
+    transition:background .4s ease;
     flex:0 0 auto;
   }
   #viewport{
@@ -328,7 +349,8 @@
   .epg-countdown{
     width:180px;height:280px;border-radius:999px;border:0;   /* no stroke; the focus ring outlines it when focused */
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;
-    background:rgba(255,255,255,.15);box-shadow:inset -1px 3px 17px rgba(255,255,255,.16);
+    /* glass over the theme gradient, light rim */
+    background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 60%), var(--th-pill);box-shadow:inset 0 0 0 2px rgba(255,255,255,.45), inset -1px 3px 17px rgba(255,255,255,.2);
     flex:0 0 auto;
   }
   .epg-countdown b{font-size:28px;font-weight:700;}
@@ -379,20 +401,20 @@
      56 + title 39 + 28 = 123px); then the usual 56px to the rails around it */
   .clips-row{padding:56px 0 123px;margin-bottom:56px;}
   .clips-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;
-    background:url('posters/clips-bg.jpg') center / cover no-repeat;
+    background:url('posters/shorts-bg.jpg') center / cover no-repeat;opacity:.55;
     /* fades to transparent top and bottom, so it melts into whatever is behind the page (Figma: 1.8–17% / 83.5–100%) */
     -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
     mask-image:linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);}
   .clips-row .row-title{text-shadow:0 2px 10px rgba(0,0,0,.7);}
   /* artwork toned down (less colour, darker) with a dark overlay fading in from the top and bottom edges */
-  .clips-bg{filter:saturate(.6) brightness(.6);}
+  .clips-bg{filter:none;}
   .clips-row::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
     background:linear-gradient(180deg, rgba(10,7,20,.85) 0%, rgba(10,7,20,0) 32%, rgba(10,7,20,0) 62%, rgba(10,7,20,.9) 100%);}
   .clips-row .rail-track{gap:32px;align-items:stretch;}
-  .clip-card{position:relative;width:245px;height:338px;border-radius:9px;   /* same as the poster rails (Anti-Hero Legal Drama) */ flex:0 0 auto;background-size:cover;background-position:center;box-shadow:0 8px 24px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4);}
+  .clip-card{position:relative;width:220px;height:330px;border-radius:12px;   /* Figma Shorts: 220 x 330 */ flex:0 0 auto;background-size:cover;background-position:center;box-shadow:0 8px 24px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4);}
   .clip-badge{position:absolute;left:12px;max-width:221px;box-sizing:border-box;padding:0 12px;border-radius:18px;color:#fff;
     /* the violet → magenta → orange of the brand numeral art */
-    background:linear-gradient(115deg, #4a1fb8 0%, #a8268a 55%, #c8862f 110%);
+    background:linear-gradient(115deg, var(--th-a) 0%, var(--th-b) 55%, var(--th-c) 110%);
     box-shadow:inset -1px 2px 10px rgba(255,255,255,.28);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);text-shadow:0 1px 3px rgba(0,0,0,.35);
     font-size:20px;font-weight:500;line-height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .clip-top{top:12px;}
@@ -400,7 +422,7 @@
   .clip-logo.round{width:44px;height:44px;border-radius:50%;object-fit:cover;background:#fff;}
   /* View All: same tile as the TV Guide's "TV Guide / View All" pill */
   .clip-viewall{width:180px;border-radius:999px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
-    background:rgba(255,255,255,.15);box-shadow:inset -1px 3px 17px rgba(255,255,255,.16);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff;}
+    background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 60%), var(--th-pill);box-shadow:inset 0 0 0 2px rgba(255,255,255,.45), inset -1px 3px 17px rgba(255,255,255,.2);color:#fff;}
   .clip-viewall b{font-size:28px;font-weight:700;}
   .clip-viewall span{font-size:22px;font-weight:400;opacity:.9;}
   /* provider tag logos (badges/tag-*.png) are drawn as ovals on a transparent corner: everywhere on the page they
@@ -420,9 +442,35 @@
     transition:border-radius .22s cubic-bezier(.2,0,0,1), background .22s ease, border-color .22s ease;}
   .quick-chip span{font-size:28px;font-weight:400;line-height:1.2;color:#fff;text-shadow:0 4px 10px rgba(0,0,0,.5);white-space:nowrap;}
   .quick-chip.focused{border-radius:99px;border-color:transparent;   /* the focus ring is the only outline */
-    background:linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15)), radial-gradient(ellipse 120% 160% at 12% 90%, rgba(157,152,224,.24) 6%, rgba(157,152,224,.6) 100%);}
+    background:linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15)), radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,.14) 6%, rgba(255,255,255,.3) 100%);}
   .quick-chip.focused span{font-size:32px;font-weight:700;text-shadow:0 4px 10px rgba(0,0,0,.25);}
   .quick-row .item.focused{transform:none;}   /* the chip changes shape instead of growing */
+
+  /* ---------- Theme picker (Figma PLAY-player "popup theme select", 1326:12345) ---------- */
+  #theme-pop{position:fixed;inset:0;z-index:5000;background:#101010;display:flex;align-items:center;justify-content:center;transition:opacity .35s ease;}
+  #theme-pop.gone{opacity:0;pointer-events:none;}
+  #theme-stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:111px;font-family:'Plus Jakarta Sans', var(--font-display);}
+  #theme-stage h2{margin:0;font-size:93.5px;line-height:105.5px;font-weight:600;letter-spacing:-2.4px;color:#fff;}
+  .th-row{display:flex;gap:56px;}
+  .th-card{position:relative;width:356px;height:464px;border-radius:24.3px;overflow:hidden;cursor:pointer;background:linear-gradient(180deg,#020b10,#0b1220);
+    transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s ease;}
+  .th-card img{position:absolute;max-width:none;pointer-events:none;}
+  .th-card .lbl{position:absolute;left:20.4px;top:368px;width:316px;display:flex;flex-direction:column;gap:10px;}
+  .th-card b{font-size:38px;line-height:42.8px;font-weight:600;letter-spacing:-.97px;color:#fff;white-space:nowrap;}
+  .th-card span{font-size:19px;line-height:23px;font-weight:500;color:rgba(255,255,255,.66);white-space:nowrap;}
+  .th-card.focused{transform:scale(1.06);}
+  /* the Choose a Demo focus ring: an 8px band of the focused card's own artwork, blurred and brightened, with a thin
+     white rim and soft glow; it slides from card to card */
+  .th-row{position:relative;}
+  .th-ring{position:absolute;left:0;top:0;pointer-events:none;z-index:2;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.6), 0 0 15px rgba(255,255,255,.15);
+    transition:transform .22s cubic-bezier(.2,0,0,1), width .22s cubic-bezier(.2,0,0,1), height .22s cubic-bezier(.2,0,0,1);}
+  .th-ring.instant{transition:none;}
+  .th-ring .g{position:absolute;inset:0;border-radius:inherit;padding:8px;overflow:hidden;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);}
+  .th-ring .g i{position:absolute;inset:0;background:var(--img) no-repeat, linear-gradient(180deg,#020b10,#0b1220);
+    filter:blur(5px) brightness(1.6) saturate(1.3);}
 
   /* partner */
   .partner-row .rail-track{align-items:center;}
@@ -469,7 +517,8 @@
 
   /* personalize */
   /* personalize — Figma "Customize": a 1738×620 purple panel with five posters behind a tint, title + button on top */
-  .personalize{width:1738px;height:620px;border-radius:36px;overflow:hidden;position:relative;flex:0 0 auto;background:#170e2e;}
+  .personalize{width:1738px;height:620px;border-radius:36px;overflow:hidden;position:relative;flex:0 0 auto;background:var(--th-panel);}
+  .personalize .glow{display:none;}
   .personalize .glow{position:absolute;left:-198px;top:-371px;width:2008px;height:1316px;pointer-events:none;}
   .personalize .cz-poster{position:absolute;top:66px;width:300px;height:449px;border-radius:28px;overflow:hidden;filter:drop-shadow(0 0 10px rgba(0,0,0,.2));}
   .personalize .cz-poster.low{top:70px;}
@@ -481,8 +530,8 @@
   .personalize h3{font-size:50px;font-weight:600;line-height:1.2;margin:0;white-space:nowrap;}
   .btn-customize{
     width:300px;height:80px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(ellipse 260px 150px at 12% 90%, rgba(185,160,230,.4) 6%, rgba(185,160,230,.78) 100%);
-    box-shadow:inset -1px 3px 16px rgba(255,255,255,.28), 0 0 24px rgba(185,160,230,.35);
+    background:rgba(12,20,30,.62);border:1.5px solid rgba(255,255,255,.28);
+    box-shadow:inset -1px 3px 16px rgba(255,255,255,.12);
     -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);   /* frosted: blurs the posters behind it */
     font-size:36px;font-weight:400;line-height:1.2;
   }
@@ -525,7 +574,7 @@
      a 1.2px white highlight (70%) on its outer edge and a soft glow. Placed by placeHomeRing(). */
   .home-ring{
     position:absolute; left:0; top:0; z-index:1001; pointer-events:none; opacity:0;   /* above the top bar (1000) too */
-    box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.7), 0 0 15px rgba(255,255,255,.15);
+    box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.7), 0 0 15px rgba(255,255,255,.15), 0 0 26px var(--th-glow);
     transition:opacity .2s ease; will-change:transform, width, height;
   }
   .home-ring.on{ opacity:1; }
@@ -712,6 +761,17 @@
   .m-avatar-sm{width:22px;height:22px;border-radius:999px;background:rgba(255,255,255,.5);}
 </style>
 
+<div id="theme-pop" role="dialog" aria-label="Choose Theme color">
+  <div id="theme-stage">
+    <h2>Choose Theme color</h2>
+    <div class="th-row">
+      <div class="th-card" data-theme="green"><img src="icons/theme/green.svg" alt="" style="left:-117.7px;top:-225.7px;width:628.9px;height:587.5px"><div class="lbl"><b>Bright Green</b><span>Fresh • Clean • Friendly</span></div></div>
+      <div class="th-card" data-theme="vibrant"><img src="icons/theme/vibrant.svg" alt="" style="left:-39.3px;top:-137.7px;width:550.4px;height:499.5px"><div class="lbl"><b>Vibrant Contrast</b><span>Bold • Vibrant • Energetic</span></div></div>
+      <div class="th-card" data-theme="magenta"><img src="icons/theme/magenta.svg" alt="" style="left:-117.7px;top:-225.7px;width:628.9px;height:587.5px"><div class="lbl"><b style="text-shadow:0 3.9px 13.6px rgba(122,33,237,.4)">Modern Magenta</b><span style="color:rgba(255,255,255,.8)">Premium • Immersive • Expressive</span></div></div>
+      <div class="th-card" data-theme="cyan"><img src="icons/theme/cyan.svg" alt="" style="left:-117.7px;top:-225.7px;width:628.9px;height:587.5px"><div class="lbl"><b>Digital Cyan</b><span>Clean • Futuristic • Immersive</span></div></div>
+    </div>
+  </div>
+</div>
 <div id="tv-frame">
   <nav class="topnav">
     <div class="profile item" data-title="Profile"><img src="icons/profile-tv.png" alt="Profile"></div>
@@ -1179,7 +1239,7 @@
     }).join('');
     addRow('<div class="row-block">'+
       '<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="rankNumFill" x1="0" y1="0" x2="0" y2="1">'+
-        '<stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient></defs></svg>'+
+        '<stop offset="0" style="stop-color:var(--th-n1)" stop-opacity=".95"/><stop offset="1" style="stop-color:var(--th-n2)" stop-opacity=".85"/></linearGradient></defs></svg>'+
       '<div class="row-title">Top 10 in Thailand Today</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
     function layoutRankNums(){
       var ctx = document.createElement('canvas').getContext('2d');
@@ -1296,33 +1356,21 @@
     })});
   })();
 
-  /* ---------- Row: Clips (Figma Home "Clips", 2002:105733) ----------
-     A full-width artwork band behind the rail (fading into the page top and bottom), 220 x 330 clip cards with an
-     optional top badge (New / Soon Leaving) and a platform chip, then a View All pill. Stills reused from the Clips app. */
+  /* ---------- Row: Shorts (Figma For-PBR "Short", 718:92507) ----------
+     A dim artwork band behind the rail (30% opacity, fading into the page top and bottom), 220 x 330 short-drama
+     poster cards, then a View All pill. Same band spacing as before: 56px above the title, cards centred. */
   (function(){
-    // card pictures: a frame of each clip's video with the people in it, cropped to 2:3 (posters/clips/)
-    var C = 'posters/clips/';
-    // logo: the provider's tag logo (as on other rails), or a round channel logo (Asian Games, Cool Channel)
-    var AG = 'tv-features-test/live-stream-assets/channel-asian-games.png';
-    var clips = [
-      {t:'Japan vs Thailand', img:C+'football.jpg?v=2', chan:AG},
-      {t:'Spider-Man: Brand New Day', img:C+'spider.jpg?v=2', pos:'center 100%', tag:'netflix', top:'New'},
-      {t:'Thailand vs China · Volleyball', img:C+'vall.jpg?v=2', chan:AG},
-      {t:'New HBO Original Series', img:C+'hbo.jpg', tag:'hbo', top:'Soon Leaving'},
-      {t:'Thailand vs Singapore · Badminton', img:C+'bad.jpg', chan:AG},
-      {t:'Avengers: Doomsday', img:C+'dis.jpg?v=2', tag:'disney'},
-      {t:'Love Island All Stars', img:C+'all.jpg', tag:'netflix'},
-      {t:'Special Offer · Herbal Tonic', img:C+'cool.jpg', chan:'tv-features-test/concert-assets/channel-cool.png'},
-      {t:'Love Language — Dance Break', img:C+'concert.jpg', tag:'viu', top:'New'}
+    var shorts = [
+      {t:'Seven Days Back, Old Love Ends', img:'s1.jpg'}, {t:'Grandma Takes Over the Family II', img:'s2.jpg'},
+      {t:'Ink and Rain', img:'s3.jpg'}, {t:"The Secretary's Forbidden Love", img:'s4.jpg'},
+      {t:"The Mafia Boss's Spoiled Secretary", img:'s5.jpg'}, {t:"The Healer's Comeback", img:'s6.jpg'},
+      {t:'Back to the Moonlight Promise', img:'s7.jpg'}, {t:'Short Drama #8', img:'s8.jpg'}
     ];
-    var cards = clips.map(function(c){
-      return '<div class="card clip-card item" data-title="'+c.t+'" style="background-image:url(\''+c.img+'\');'+(c.pos ? 'background-position:'+c.pos+';' : '')+'">'+
-        (c.top ? '<span class="clip-badge clip-top">'+c.top+'</span>' : '')+
-        (c.tag ? '<img class="clip-logo" src="badges/tag-'+c.tag+'.png" alt="'+c.tag+'">' : '<img class="clip-logo round" src="'+c.chan+'" alt="">')+
-      '</div>';
-    }).join('') + '<div class="clip-viewall item" data-title="Clips – View All" data-ring-art=""><b>Clips</b><span>View All</span></div>';
-    addRow('<div class="row-block clips-row"><div class="clips-bg"></div><div class="row-title">Clips</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
-    MOBILE_ROWS.push({title:'Clips', type:'poster', items: clips.map(function(c){ return {t:c.t, img:c.img}; })});
+    var cards = shorts.map(function(c){
+      return '<div class="card clip-card item" data-title="'+c.t+'" style="background-image:url(\'posters/shorts/'+c.img+'\');"></div>';
+    }).join('') + '<div class="clip-viewall item" data-title="Shorts – View All" data-ring-art=""><b>Shorts</b><span>View All</span></div>';
+    addRow('<div class="row-block clips-row"><div class="clips-bg"></div><div class="row-title">Shorts</div><div class="rail-viewport"><div class="rail-track">'+cards+'</div></div></div>');
+    MOBILE_ROWS.push({title:'Shorts', type:'poster', items: shorts.map(function(c){ return {t:c.t, img:'posters/shorts/'+c.img}; })});
   })();
 
   posterRail('Anti-Hero Legal Drama', [
@@ -2246,6 +2294,47 @@
     }
   }
 })();
+
+  /* ---------- Theme picker: shown every time Home opens; arrows + Enter (or a click) pick a theme ---------- */
+  (function(){
+    var pop = document.getElementById('theme-pop'), stage = document.getElementById('theme-stage');
+    var cards = Array.prototype.slice.call(pop.querySelectorAll('.th-card')), i = 2;   // starts on Modern Magenta (the current look)
+    function fit(){ var k = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = 'translate(-50%,-50%) scale(' + k + ')'; }
+    var row = pop.querySelector('.th-row'), ring = document.createElement('div');
+    ring.className = 'th-ring instant'; ring.innerHTML = '<div class="g"><i></i></div>'; row.appendChild(ring);
+    function paint(){
+      cards.forEach(function(c, j){ c.classList.toggle('focused', j === i); });
+      // ring: the focused card at its 1.06 focus scale, plus 8px all round
+      var c = cards[i], k = 1.06, w = c.offsetWidth * k, h = c.offsetHeight * k;
+      var x = c.offsetLeft - (w - c.offsetWidth) / 2 - 8, y = c.offsetTop - (h - c.offsetHeight) / 2 - 8;
+      ring.style.width = (w + 16) + 'px'; ring.style.height = (h + 16) + 'px';
+      ring.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+      ring.style.borderRadius = (24.3 * k + 8) + 'px';
+      // the band shows the card's own artwork, lined up with it (same size and offset, at the focus scale)
+      var im = c.querySelector('img'), gi = ring.querySelector('i');
+      gi.style.setProperty('--img', 'url("' + im.getAttribute('src') + '")');
+      gi.style.backgroundSize = (im.offsetWidth * k) + 'px ' + (im.offsetHeight * k) + 'px, 100% 100%';
+      gi.style.backgroundPosition = (im.offsetLeft * k + 8) + 'px ' + (im.offsetTop * k + 8) + 'px, 0 0';
+      requestAnimationFrame(function(){ ring.classList.remove('instant'); });
+    }
+    function pick(j){
+      var t = cards[j].dataset.theme;
+      ['green','vibrant','magenta','cyan'].forEach(function(n){ document.body.classList.toggle('theme-' + n, n === t && n !== 'magenta'); });
+      pop.classList.add('gone'); removeEventListener('keydown', onKey, true);
+      setTimeout(function(){ pop.remove(); }, 400);
+    }
+    function onKey(e){
+      if(e.key === 'ArrowRight') i = Math.min(cards.length - 1, i + 1);
+      else if(e.key === 'ArrowLeft') i = Math.max(0, i - 1);
+      else if(e.key === 'Enter' || e.key === ' '){ pick(i); }
+      else if(e.key === 'Escape' || e.key === 'Backspace'){ pick(2); }   // keep the default
+      e.preventDefault(); e.stopImmediatePropagation(); paint();
+    }
+    addEventListener('keydown', onKey, true);
+    addEventListener('resize', fit);
+    cards.forEach(function(c, j){ c.addEventListener('mouseenter', function(){ i = j; paint(); }); c.addEventListener('click', function(){ pick(j); }); });
+    fit(); paint();
+  })();
 </script>
 
 </body></html>
