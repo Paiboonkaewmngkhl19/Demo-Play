@@ -29,7 +29,7 @@ import iconNavTv from "../assets/shorts/nav-tv.svg";
 import iconNavShorts from "../assets/shorts/nav-shorts.svg";
 import iconNavShortsDefault from "../assets/shorts/nav-shorts-default.svg";
 import iconNavSearch from "../assets/shorts/nav-search.svg";
-import avatarUser from "../assets/shorts/avatar-placeholder.png";
+import avatarUser from "../assets/shorts/avatar-user.png";
 import HomeScreen from "./HomeScreen";
 // Brand marks for the share sheet (Simple Icons, CC0), inlined so they take the tile's colour
 import logoLine from "../assets/shorts/share-line.svg?raw";
@@ -247,7 +247,8 @@ const FEED: FeedItem[] = [
   {
     id: 7,
     publisher: { kind: "ott", name: "Disney+", brand: "disney" },
-    video: DOOMSDAY, start: 0, length: 27, fit: "contain", aspect: 1280 / 584, blurFill: true,
+    // shown upright 9:16: cropped to fill the screen; zoom 1.1 cuts the ~24px black bars baked into the 1280x584 file
+    video: DOOMSDAY, start: 0, length: 27, zoom: 1.1,
     title: "Avengers: Doomsday",
     summary: "The official trailer. Marvel Studios' Avengers: Doomsday — only in cinemas, then streaming on Disney+.",
     ageRating: "13+", quality: "4K", premium: true, ctaIcon: "play",
@@ -316,8 +317,8 @@ export default function App() {
   const [idx, setIdx] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [screen, setScreen] = useState<"feed" | "playback">("feed");
-  // Bottom navigation tab: Shorts (the feed) or Home (HomeScreen, drawn over the feed, which pauses meanwhile)
-  const [tab, setTab] = useState<"Shorts" | "Home">("Shorts");
+  // Bottom navigation tab: Clips (the feed) or Home (HomeScreen, drawn over the feed, which pauses meanwhile)
+  const [tab, setTab] = useState<"Clips" | "Home">("Clips");
   // Views the user came from, so Back can return to exactly where they were
   const [trail, setTrail] = useState<{ screen: "feed" | "playback"; sheetOpen: boolean }[]>([]);
   const [muted, setMuted] = useState(true);
@@ -517,7 +518,7 @@ export default function App() {
                       {f && (
                         <FeedCard
                           item={f}
-                          active={o === 0 && !sheetOpen && !shareOpen && tab === "Shorts"}
+                          active={o === 0 && !sheetOpen && !shareOpen && tab === "Clips"}
                           liked={liked.has(f.id)}
                           saved={saved.has(f.id)}
                           reminded={reminded.has(f.id)}
@@ -556,7 +557,7 @@ export default function App() {
                 topInset={isPhone ? "env(safe-area-inset-top, 0px)" : `${STATUS_H}px`}
                 bottom={feedBottom}
                 shorts={FEED.map(f => ({ img: f.img, title: f.title }))}
-                onOpenShort={i => { flushSync(() => setIdx(i)); setTab("Shorts"); }}
+                onOpenShort={i => { flushSync(() => setIdx(i)); setTab("Clips"); }}
                 onToast={toast}
               />
             )}
@@ -564,7 +565,7 @@ export default function App() {
               bottom={navBottom}
               indicator={!isPhone}
               active={tab}
-              onTab={label => { if (label === "Home" || label === "Shorts") setTab(label); else toast(`${label} (demo)`); }}
+              onTab={label => { if (label === "Home" || label === "Clips") setTab(label); else toast(`${label} (demo)`); }}
             />
 
             {/* Details page (the CTA opens it) */}
@@ -1347,7 +1348,7 @@ function StatusBar() {
 const NAV_TABS = [
   { label: "Home", icon: iconNavHome, activeIcon: iconNavHomeActive },
   { label: "TV", icon: iconNavTv },
-  { label: "Shorts", icon: iconNavShortsDefault, activeIcon: iconNavShorts },
+  { label: "Clips", icon: iconNavShortsDefault, activeIcon: iconNavShorts },
   { label: "Search", icon: iconNavSearch },
   { label: "Profile", avatar: avatarUser },
 ];

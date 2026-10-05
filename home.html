@@ -2,7 +2,7 @@
 <title>Stream Home Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-0:#0a0714;
@@ -91,29 +91,30 @@
     padding:24px 110px 56px;
     background:linear-gradient(180deg, rgba(8,6,20,.56) 0%, rgba(8,6,20,.38) 55%, rgba(8,6,20,0) 100%);   /* lightened 20%, twice */
   }
+  /* Figma "top_navigation" (628:69619): 60px profile photo, then search and the tabs right after it */
   .topnav .profile{
-    width:60px;height:60px;border-radius:999px;
-    background:linear-gradient(135deg,#7027d9,#d12dad);
+    width:60px;height:60px;border-radius:999px;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:22px;color:#fff;
     flex:0 0 auto;
   }
+  .topnav .profile img{ width:100%; height:100%; object-fit:cover; display:block; }
   .topnav .center{
     position:relative;
     display:flex;align-items:center;gap:12px;flex:1;
     justify-content:flex-start;
-    margin-left:60px;
+    margin-left:20px;   /* room between the profile photo and the search button's focus ring */
   }
   .navsearch{
-    width:60px;height:60px;border-radius:999px;
+    width:60px;height:60px;border-radius:999px;margin:0 8px;   /* square, so its focus fill and ring are a circle; margin: room for that ring */
     display:flex;align-items:center;justify-content:center;
     color:#fff;flex:0 0 auto;
-    font-size:20px;cursor:pointer;
+    cursor:pointer;
   }
+  .navsearch img{ width:32px; height:32px; display:block; }
   .navtab{
     height:60px;padding:0 20px;border-radius:999px;   /* border-box: the size already included the old border */
     display:flex;align-items:center;justify-content:center;
-    font-size:19px;color:#fff;text-shadow:0 0 6px rgba(0,0,0,.4);
+    font-family:'Plus Jakarta Sans', var(--font-display);font-size:24px;font-weight:400;line-height:1.2;color:#fff;text-shadow:0 0 6px rgba(0,0,0,.4);
     background:transparent;border:0;   /* no stroke: the glass fill meets the focus ring directly */
     white-space:nowrap;cursor:pointer;
   }
@@ -388,6 +389,8 @@
   .hero-pick p.desc{font-size:22px;color:var(--ink-dim);max-width:900px;margin:0;line-height:1.4;}
   .hero-pick .chanrow{display:flex;align-items:center;gap:14px;margin-top:4px;}
   .hero-pick .chanlogo{height:44px;padding:0 14px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;font-weight:700;font-size:16px;}
+  .hero-pick .chan-partner-logo{height:53px;width:114px;object-fit:cover;border-radius:8px;display:block;flex:0 0 auto;}
+  .hero-pick .chanmeta{font-size:25px;font-weight:500;padding:0 5px;white-space:nowrap;}
   .hero-pick .chan-tag-logo{height:44px;width:66px;object-fit:contain;border-radius:8px;background:#000;display:block;flex:0 0 auto;}   /* platform tag logo as a filled rounded square, chip height */
   .catchip{background:rgba(255,255,255,.3);padding:9px 15px;border-radius:8px;font-size:19px;}
 
@@ -653,12 +656,14 @@
 
 <div id="tv-frame">
   <nav class="topnav">
-    <div class="profile item" data-title="Profile">TN</div>
+    <div class="profile item" data-title="Profile"><img src="icons/profile-tv.png" alt="Profile"></div>
     <div class="center" data-row="nav">
-      <div class="navsearch item" data-title="Search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+      <div class="navsearch item" data-title="Search"><img src="icons/nav-search.svg" alt="Search"></div>
       <div class="navtab item active" data-label="Home">Home</div>
       <div class="navtab item" data-label="My List">My list</div>
-      <div class="navtab item" data-label="Add-on">Add-on</div>
+      <div class="navtab item" data-label="Shorts">Shorts</div>
+      <div class="navtab item" data-label="Games">Games</div>
+      <div class="navtab item" data-label="Store">Store</div>
     </div>
   </nav>
 
@@ -1146,6 +1151,9 @@
     // Expanding cards: each sits as a portrait poster and, when focused, widens into the 1240px feature card
     // (a wide crop of its artwork + badges, title, synopsis, provider tag and chips)
     var picks = [
+      {t:'District 9', href:'movie-detail.html', portrait:'posters/district9.jpg', ppos:'50% 30%', wide:'posters/district9.jpg', pos:'center',
+        badges:[], tag:'monomax', meta:'1 hr. 52 min', chips:['Sci-Fi','16+','4K','Movie'],
+        d:'An extraterrestrial race forced to live in slum-like conditions on Earth suddenly finds a kindred spirit in a government agent who is exposed to their biotechnology.'},
       {t:'Game of Thrones: House of the Dragon', portrait:'posters_portrait/House.jpg', wide:'posters/house-of-the-dragon.jpg', pos:'center',
         badges:['#1 in thailand'], live:true, tag:'hbo', chips:['3 Seasons, 26 Episodes','Action, Sci-fi','PG-15+'],
         d:'Set 200 years before the events of Game of Thrones, this epic series tells the story of House Targaryen.'},
@@ -1169,18 +1177,22 @@
         d:'Jake and Neytiri\'s family meet the Ash People, a fierce Na\'vi clan, in a new chapter on Pandora.'}
     ];
     // the filled square behind each tag logo takes the logo's own background colour
-    var TAG_FILL = {netflix:'#000', hbo:'#000', prime:'#1a98ff', disney:'#052538', viu:'#ffbf00'};
+    var TAG_FILL = {netflix:'#000', hbo:'#000', prime:'#1a98ff', disney:'#052538', viu:'#ffbf00', monomax:'#fff'};
     var cards = picks.map(function(it){
-      return '<div class="card hero-pick tp-card item" data-title="'+it.t+'" data-ring-art="url(&quot;'+it.wide+'&quot;)">'+
-        '<div class="tp-portrait" style="background-image:url(\''+it.portrait+'\');"></div>'+
+      return '<div class="card hero-pick tp-card item" data-title="'+it.t+'"'+(it.href ? ' data-href="'+it.href+'"' : '')+' data-ring-art="url(&quot;'+it.wide+'&quot;)">'+
+        '<div class="tp-portrait" style="background-image:url(\''+it.portrait+'\');'+(it.ppos ? 'background-position:'+it.ppos+';' : '')+'"></div>'+
         '<div class="tp-wide" style="background-image:url(\''+it.wide+'\');background-position:'+it.pos+';"></div>'+
         '<div class="scrim"></div>'+
         '<div class="content">'+
-          '<div class="top-badges">'+it.badges.map(function(b){ return '<span class="pill-rank">'+b+'</span>'; }).join('')+
+          '<div class="top-badges"'+(it.badges.length || it.live ? '' : ' style="display:none"')+'>'+it.badges.map(function(b){ return '<span class="pill-rank">'+b+'</span>'; }).join('')+
             (it.live ? '<span class="badge-live"><span class="dot"></span>Live</span>' : '')+'</div>'+
           '<h3>'+it.t+'</h3>'+
           '<p class="desc">'+it.d+'</p>'+
-          '<div class="chanrow"><img class="chan-tag-logo" src="badges/tag-'+it.tag+'.png" alt="'+it.tag+'" style="background:'+TAG_FILL[it.tag]+';">'+
+          '<div class="chanrow">'+
+            // logo: a wide partner logo (Figma "metadata/partner/logo", 114x53); otherwise the provider's tag logo
+            (it.logo ? '<img class="chan-partner-logo" src="'+it.logo+'" alt="">'
+                     : '<img class="chan-tag-logo" src="badges/tag-'+it.tag+'.png" alt="'+it.tag+'" style="background:'+TAG_FILL[it.tag]+';">')+
+            (it.meta ? '<span class="chanmeta">'+it.meta+'</span>' : '')+
             it.chips.map(function(c){ return '<span class="catchip">'+c+'</span>'; }).join('')+'</div>'+
         '</div>'+
       '</div>';
@@ -1189,8 +1201,8 @@
       cards +
     '</div></div></div>');
     MOBILE_ROWS.push({title:'Top Pick For You', type:'mixed', items: [
-      {kind:'editorial', t:'Game of Thrones: House of the Dragon', sub:'HBO MAX', img:'posters/house-of-the-dragon.jpg', live:true,
-        desc:'Set 200 years before the events of Game of Thrones, this epic series tells the story of House Targaryen.'}
+      {kind:'editorial', t:'District 9', sub:'MONOMAX', img:'posters/district9.jpg',
+        desc:'An extraterrestrial race forced to live in slum-like conditions on Earth suddenly finds a kindred spirit in a government agent.'}
     ].concat(picks.slice(1).map(function(it){
       return {kind:'poster', t:it.t, img:it.portrait};
     }))});
@@ -1639,6 +1651,9 @@
     var it = r.items[colByRow[curRow]];
     if(!it) return;
     var label = it.getAttribute('data-title') || it.textContent.trim() || 'Selected';
+    // cards with a detail page open it (District 9 → movie-detail.html)
+    var href = it.getAttribute('data-href');
+    if(href){ it.animate([{transform:getComputedStyle(it).transform},{transform:'scale(0.97)'}], {duration:140, easing:'ease-out'}); setTimeout(function(){ window.location.href = href; }, 140); return; }
     it.animate([{transform:getComputedStyle(it).transform},{transform:'scale(0.97)'},{transform:'scale(1.07)'}], {duration:220, easing:'ease-out'});
     toast('Now playing: ' + label);
   }

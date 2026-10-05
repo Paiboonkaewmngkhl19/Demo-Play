@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PLAY ULTIMATE · Package Detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Package detail + payment (Figma "03 / Package Detail / Payment", node 628:76377), opened from Subscribe on the
+  PLAY ULTIMATE card in movie-detail.html's package view. A 1920x1080 TV screen scaled to the window.
+  Remote / keyboard: left column = Details / Terms tabs; right column = the 3 prices, then the 2 payment buttons.
+  Arrows move, Enter selects, Esc / Back returns to the packages.
+-->
+<style>
+  :root{ color-scheme:dark; --on:#e8e8e8; --muted:#a8a8a8; }
+  html,body{ margin:0; height:100%; background:#000; overflow:hidden; font-family:'Plus Jakarta Sans', system-ui, sans-serif; color:#fff; }
+  #frame{ position:absolute; left:50%; top:50%; overflow:hidden; background:#101010; }
+  #screen{ position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:top left; }
+
+  /* ---------- left: package details ---------- */
+  .left{ position:absolute; left:0; top:0; width:1093px; height:1080px; box-sizing:border-box; padding:60px 80px 60px 110px; display:flex; flex-direction:column; gap:24px; }
+  h1{ margin:0; font-size:32px; font-weight:600; color:var(--on); }
+  .content{ display:flex; flex-direction:column; gap:32px; }
+  .switcher{ align-self:flex-start; display:flex; padding:5px; border-radius:18px; background:#202020; border:1px solid rgba(255,255,255,.18); }
+  .tab{ padding:14px 36px; border-radius:13.5px; font-size:24px; color:#adadad; border:2px solid transparent; cursor:pointer; transition:background .15s ease, box-shadow .15s ease; }
+  .tab.active{ color:#fff; border-color:rgba(255,255,255,.8);
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.3) 100%), rgba(255,255,255,.2); }
+  .tab.focused{ box-shadow:0 0 0 4px #e8e8e8; }
+  .tab.disabled{ color:#5c5c5c; cursor:default; }   /* Terms & Conditions: switched off for now */
+
+  .card{ position:relative; box-sizing:border-box; padding:28px; border-radius:36px; border:1px solid rgba(255,255,255,.13); background:#3d3d3d; display:flex; flex-direction:column; gap:40px; min-height:770px; }
+  .hero{ display:flex; align-items:center; gap:24px; }
+  .hero .lg{ width:110px; height:110px; border-radius:8px; background:#000; overflow:hidden; flex:0 0 auto; }
+  .hero .lg img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .hero b{ font-size:24px; font-weight:600; }
+  .services{ display:grid; grid-template-columns:repeat(4, 181.75px); column-gap:40px; row-gap:24px; }
+  .svc{ display:flex; gap:8px; align-items:flex-start; }
+  .svc .ic{ width:48px; height:48px; border-radius:8px; overflow:hidden; flex:0 0 auto; background:#000; }
+  .svc .ic img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .svc .ic.cover img{ object-fit:cover; }
+  .svc .ic.white{ background:#fff; }
+  .svc .info{ display:flex; flex-direction:column; gap:4px; font-size:16px; }
+  .svc .tags{ display:flex; align-items:center; gap:6px; }
+  .svc .tags img{ height:20px; display:block; }
+  .svc .tags .fhd{ height:18px; box-sizing:border-box; padding:0 5px; border:1.5px solid #fff; border-radius:4px; font-size:11px; line-height:15px; font-weight:600; }
+  .groups{ display:flex; flex-direction:column; gap:24px; }
+  .group{ display:flex; flex-direction:column; gap:8px; }
+  .group h3{ margin:0; font-size:20px; font-weight:500; }
+  .logos{ display:flex; gap:16px; }
+  .logos .sq{ width:40px; height:40px; border-radius:4px; background:#fff; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .logos .sq img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .logos .sq.pad img{ width:84%; height:84%; }
+  .logos .sq.more{ background:#c9c9c9; font-size:12px; color:#fff; }
+  .logos.devices{ gap:12px; }
+  .logos.devices img{ width:32px; height:32px; }
+  .fine{ margin:0; font-size:16px; line-height:1.4; color:var(--muted); }
+  .terms{ display:none; font-size:20px; line-height:1.6; color:#d8d8d8; }
+  .terms ol{ margin:0; padding-left:26px; }
+  body.show-terms .card > :not(.terms){ display:none; }
+  body.show-terms .terms{ display:block; }
+
+  /* ---------- right: price + payment ---------- */
+  .right{ position:absolute; left:1093px; top:0; width:827px; height:1080px; box-sizing:border-box; padding:64px 110px; background:#242424; display:flex; flex-direction:column; }
+  .rhead{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:24px; }
+  .rhead span{ font-size:14px; color:var(--muted); }
+  .prices{ display:flex; flex-direction:column; gap:24px; }
+  .price{ position:relative; height:113px; box-sizing:border-box; border-radius:20px; background:#404040; padding:18px; display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+    border:2.5px solid transparent; transition:background .15s ease, box-shadow .15s ease; }
+  .price .amt{ font-size:30px; font-weight:600; }
+  .price .vat{ font-size:16px; margin-top:8px; }
+  .price .pill{ align-self:flex-start; height:36px; padding:0 12px; border-radius:9999px; background:#3a3a3a; display:flex; align-items:center; font-size:20px; }
+  .price.selected{ background:#707070; border-color:rgba(255,255,255,.8); }
+  .price.focused{ box-shadow:0 0 0 4px #e8e8e8, 0 0 22px rgba(255,255,255,.25); }
+  .pay{ margin-top:auto; display:flex; flex-direction:column; }
+  .pay h2{ margin:0 0 24px; font-size:32px; font-weight:600; }
+  .paybtn{ position:relative; height:80px; box-sizing:border-box; border-radius:9999px; padding:0 40px; display:flex; align-items:center; gap:16px; font-size:24px; cursor:pointer;
+    background:#252525; margin-bottom:24px; transition:background .15s ease, box-shadow .15s ease; }
+  .paybtn img{ width:32px; height:32px; }
+  .paybtn span{ flex:1; }
+  /* focused: Figma's focused TV button, a light outline around an inner glass pill */
+  .paybtn.focused{ background:#242424; box-shadow:inset 0 0 0 3px #e8e8e8; }
+  .paybtn.focused::before{ content:''; position:absolute; inset:6px; border-radius:9999px; border:2.2px solid rgba(255,255,255,.8);
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.4) 100%), rgba(255,255,255,.2); box-shadow:inset -1px 3px 17px rgba(255,255,255,.16); }
+  .paybtn > *{ position:relative; }
+  .note{ margin:0; text-align:center; font-size:16px; color:var(--on); }
+
+  /* ---------- Confirm Subscribe popup (Figma 654:77295 before scrolling, 654:77363 ready to confirm) ---------- */
+  .scrim{ position:absolute; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:3; }
+  .modal{ position:absolute; left:260px; top:100px; width:1400px; height:880px; box-sizing:border-box; padding:44px 60px; border-radius:36px; background:#404040;
+    box-shadow:0 8px 12px rgba(0,0,0,.3); display:flex; flex-direction:column; gap:24px; z-index:4;
+    opacity:0; transform:scale(.96); pointer-events:none; transition:opacity .25s ease, transform .25s cubic-bezier(.2,0,0,1); }
+  body.confirm .scrim, body.confirm .modal{ opacity:1; pointer-events:auto; }
+  body.confirm .modal{ transform:none; }
+  .modal .mtitle{ display:flex; gap:16px; font-size:32px; line-height:40px; }
+  .modal .mtitle b{ font-weight:600; }
+  .modal .mhero{ display:flex; align-items:center; gap:16px; }
+  .modal .mhero .lg{ width:110px; height:110px; border-radius:8px; background:#000; overflow:hidden; flex:0 0 auto; }
+  .modal .mhero .lg img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .modal .mhero .nm{ font-size:24px; font-weight:600; line-height:32px; }
+  .modal .mhero .pr{ display:flex; align-items:center; gap:16px; margin-top:8px; }
+  .modal .mhero .pr b{ font-size:32px; font-weight:600; line-height:44px; }
+  .modal .mhero .pr span{ font-size:20px; color:var(--muted); }
+  .tcbox{ position:relative; flex:1; min-height:0; border-radius:20px; background:#525252; padding:16px 16px 0; display:flex; flex-direction:column; gap:10px; }
+  .tcbox h3{ margin:0; font-size:24px; font-weight:500; line-height:32px; }
+  .tcscroll{ flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; padding:0 18px 90px; font-size:16px; line-height:26px; letter-spacing:.25px; scroll-behavior:smooth; }
+  .tcscroll::-webkit-scrollbar{ display:none; }
+  .tcscroll p{ margin:0; }
+  .tcscroll p:first-child{ line-height:24px; margin-bottom:10px; }
+  .tcarrow{ position:absolute; right:16px; bottom:14px; width:40px; height:40px; }
+  .scrollbtn{ position:absolute; left:50%; bottom:12px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:9999px; font-size:16px; font-weight:500; cursor:pointer;
+    background:#242424; box-shadow:inset 0 0 0 1.6px rgba(232,232,232,.5); transition:opacity .2s ease, box-shadow .15s ease; }
+  .scrollbtn img{ width:24px; height:24px; }
+  .scrollbtn.focused{ box-shadow:inset 0 0 0 1.6px #e8e8e8, 0 0 0 3px rgba(232,232,232,.35); background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.25) 100%), #3a3a3a; }
+  body.read .scrollbtn{ opacity:0; pointer-events:none; }
+  .actions{ display:flex; gap:16px; }
+  .mbtn{ position:relative; height:80px; box-sizing:border-box; border-radius:9999px; display:flex; align-items:center; justify-content:center; gap:16px; font-size:24px; font-weight:600; cursor:pointer; background:#252525; box-shadow:inset 0 3px 3px rgba(0,0,0,.23); }
+  .mbtn.cancel{ width:486px; }
+  .mbtn.agree{ flex:1; background:#3d3d3d; color:rgba(255,255,255,.52); box-shadow:none; }
+  .mbtn.agree img{ width:32px; height:32px; opacity:.52; }
+  body.read .mbtn.agree{ color:#fff; background:#2c2c2c; }
+  body.read .mbtn.agree img{ opacity:1; }
+  .mbtn > *{ position:relative; }
+  .mbtn.focused{ background:#242424; box-shadow:inset 0 0 0 3px #e8e8e8; color:#fff; }
+  .mbtn.focused::before{ content:''; position:absolute; inset:6px; border-radius:9999px; border:2.2px solid rgba(255,255,255,.8);
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.4) 100%), rgba(255,255,255,.2); box-shadow:inset -1px 3px 17px rgba(255,255,255,.16); }
+
+  /* ---------- OTP popup (Figma 654:77283 empty, 654:77287 filled) + success (654:77291) ---------- */
+  .dlg{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.96); box-sizing:border-box; border-radius:36px; background:#404040;
+    box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:4; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s cubic-bezier(.2,0,0,1); }
+  body.otp .dlg.otpd, body.done .dlg.okd{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%); }
+  body.otp .scrim, body.done .scrim{ opacity:1; pointer-events:auto; }
+  .otpd{ width:800px; padding:60px; display:flex; flex-direction:column; align-items:center; gap:40px; }
+  .otpd .ohead{ display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; }
+  .otpd .ohead h2{ margin:0; font-size:40px; font-weight:600; line-height:1.2; letter-spacing:-.2px; }
+  .otpd .ohead p{ margin:0; font-size:24px; line-height:1.2; letter-spacing:-.2px; }
+  .otpd .ohead p b{ font-weight:600; }
+  .pad{ display:flex; flex-direction:column; align-items:center; gap:24px; width:438px; }
+  .pins{ display:flex; gap:17.24px; }
+  .pin{ width:86.2px; height:100px; box-sizing:border-box; border-bottom:5.17px solid rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; font-size:56px; font-weight:500; }
+  .pin.filled{ border-bottom-color:rgba(255,255,255,.35); }
+  .pin.cur{ border-bottom-color:rgba(255,255,255,.8); }
+  .pin.cur:empty::after{ content:''; width:1.7px; height:66px; background:#fff; animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+  .keys{ width:100%; box-sizing:border-box; padding:26px; border-radius:20px; background:#525252; display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+  .key{ position:relative; width:120px; height:52px; box-sizing:border-box; border-radius:24px; background:#252525; box-shadow:inset 0 3px 3px rgba(0,0,0,.23);
+    display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer; }
+  .key img{ width:36px; height:36px; }
+  .key.blank{ background:transparent; box-shadow:none; cursor:default; }
+  .key.focused{ background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.4) 100%), rgba(255,255,255,.28); box-shadow:inset 0 0 0 2.5px rgba(255,255,255,.85); }
+  .otpd .sent{ margin:0; text-align:center; font-size:24px; line-height:1.2; letter-spacing:-.2px; }
+  .oacts{ display:flex; gap:16px; width:653px; }
+  .obtn{ position:relative; height:80px; box-sizing:border-box; padding:0 40px; border-radius:9999px; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:600; cursor:pointer;
+    background:#252525; box-shadow:inset 0 3px 3px rgba(0,0,0,.23); color:rgba(255,255,255,.85); }
+  .obtn.back{ padding:0 80px; }
+  .obtn.req{ width:207px; padding:0; background:#3d3d3d; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18); color:rgba(255,255,255,.52); }
+  .obtn.done{ flex:1; background:#3d3d3d; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18); color:rgba(255,255,255,.52); }
+  .obtn.ready{ background:#252525; color:rgba(255,255,255,.85); box-shadow:inset 0 0 0 1px rgba(255,255,255,.18); }
+  .obtn > *{ position:relative; }
+  .obtn.focused{ background:#242424; box-shadow:inset 0 0 0 3px #e8e8e8; color:#fff; }
+  .obtn.focused::before{ content:''; position:absolute; inset:6px; border-radius:9999px; border:3px solid rgba(255,255,255,.8);
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.4) 100%), rgba(255,255,255,.2); box-shadow:inset -1px 3px 17px rgba(255,255,255,.16); }
+  .okd{ width:816px; padding:60px 40px; display:flex; flex-direction:column; align-items:center; gap:32px; text-align:center; color:rgba(255,255,255,.95); }
+  .okd .okhead{ display:flex; flex-direction:column; align-items:center; gap:24px; }
+  .okd .okhead img{ width:80px; height:80px; }
+  .okd h2{ margin:0 0 8px; font-size:32px; font-weight:600; line-height:40px; letter-spacing:-.2px; }
+  .okd .okhead p{ margin:0; font-size:22px; line-height:28px; }
+  .okd hr{ width:100%; height:2px; margin:0; border:0; background:rgba(255,255,255,.18); }
+  .okd .okcard{ width:100%; box-sizing:border-box; padding:20px 0; border-radius:20px; background:#525252; display:flex; flex-direction:column; align-items:center; gap:24px; }
+  .okd .okcard .n{ font-size:57px; font-weight:700; }
+  .okd .okcard .a{ font-size:45px; line-height:52px; }
+  .okd .okcard .v{ font-size:24px; font-weight:500; }
+  .okd .okcard .d{ font-size:20px; }
+
+  #toast{ position:absolute; left:50%; bottom:60px; transform:translateX(-50%); padding:14px 26px; border-radius:999px;
+    background:rgba(20,20,24,.9); font-size:24px; opacity:0; transition:opacity .2s ease; pointer-events:none; z-index:5; }
+  #toast.on{ opacity:1; }
+</style>
+</head>
+<body>
+<div id="frame"><div id="screen">
+  <section class="left">
+    <h1>Package Detail</h1>
+    <div class="content">
+      <div class="switcher">
+        <div class="tab item active" data-tab="details">Details</div>
+        <div class="tab disabled" data-tab="terms" aria-disabled="true">Terms &amp; Conditions</div>
+      </div>
+      <div class="card">
+        <div class="hero"><span class="lg"><img src="icons/pkg/l1.png" alt="PLAY ULTIMATE"></span><b>PLAY ULTIMATE Monthly Package</b></div>
+        <div class="services">
+          <div class="svc"><span class="ic"><img src="icons/pkg/l2.png" alt="Netflix"></span><div class="info">4 Screens<div class="tags"><img src="icons/pkg/d-badge-a.svg" alt="4K"><img src="icons/pkg/d-badge-b.svg" alt="Dolby Atmos"></div></div></div>
+          <div class="svc"><span class="ic"><img src="icons/pkg/l3.png" alt="HBO Max"></span><div class="info">4 Screens<div class="tags"><img src="icons/pkg/d-badge-a.svg" alt="4K"><img src="icons/pkg/d-badge-b.svg" alt="Dolby Atmos"></div></div></div>
+          <div class="svc"><span class="ic"><img src="icons/pkg/l4.png" alt="Disney+ Hotstar"></span><div class="info">4 Screens<div class="tags"><span class="fhd">Full HD</span><img src="icons/pkg/d-badge-b.svg" alt="Dolby Atmos"></div></div></div>
+          <div class="svc"><span class="ic cover"><img src="icons/pkg/l5.png" alt="iQIYI"></span><div class="info">2 Screens<div class="tags"><img src="icons/pkg/d-badge-a.svg" alt="4K"></div></div></div>
+          <div class="svc"><span class="ic cover"><img src="icons/pkg/l6.png" alt="Viu"></span><div class="info">5 Screens<div class="tags"><span class="fhd">Full HD</span><img src="icons/pkg/d-badge-b.svg" alt="Dolby Atmos"></div></div></div>
+          <div class="svc"><span class="ic white"><img src="icons/pkg/d-wetv.png" alt="WeTV"></span><div class="info">2 Screens<div class="tags"><span class="fhd">Full HD</span></div></div></div>
+        </div>
+        <div class="groups">
+          <div class="group"><h3>Sports</h3><div class="logos">
+            <span class="sq pad"><img src="icons/pkg/d-ucl.png" alt="UEFA Champions League"></span>
+            <span class="sq"><img src="icons/pkg/l19.png" alt="Bundesliga"></span>
+            <span class="sq pad"><img src="icons/pkg/d-motogp.png" alt="MotoGP"></span>
+            <span class="sq pad"><img src="icons/pkg/l21.png" alt="NBA"></span>
+            <span class="sq more">13+</span>
+          </div></div>
+          <div class="group"><h3>Premium Channels</h3><div class="logos">
+            <span class="sq"><img src="icons/pkg/d-cn.png" alt="Cartoon Network"></span>
+            <span class="sq pad"><img src="icons/pkg/d-cnn.png" alt="CNN"></span>
+            <span class="sq pad"><img src="icons/pkg/d-eurosport.png" alt="Eurosport"></span>
+            <span class="sq pad"><img src="icons/pkg/d-discovery.png" alt="Discovery"></span>
+          </div></div>
+          <div class="group"><h3>Available on</h3><div class="logos devices">
+            <img src="icons/pkg/d-phone.svg" alt="Phone"><img src="icons/pkg/d-tablet.svg" alt="Tablet"><img src="icons/pkg/d-laptop.svg" alt="Laptop"><img src="icons/pkg/d-tv.svg" alt="TV">
+          </div></div>
+        </div>
+        <p class="fine">Enjoy Netflix, HBO Max, Disney+ Hotstar, iQIYI, Viu, and WeTV in one PLAY ULTIMATE package. THB 999/month for 12 billing cycles, excluding 7% VAT and internet charges. Available to individual AIS postpaid customers with at least 3 months of active service.</p>
+        <div class="terms">
+          <ol>
+            <li>The package renews automatically at the end of each billing cycle until cancelled.</li>
+            <li>Prices exclude 7% VAT and internet charges.</li>
+            <li>Available to individual AIS postpaid customers with at least 3 months of active service.</li>
+            <li>Number of screens and video quality depend on each streaming service and your device.</li>
+            <li>Partner apps may require you to sign in with an account linked to AIS PLAY.</li>
+            <li>AIS reserves the right to change the package terms without prior notice.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="right">
+    <div class="rhead"><h1>Package Price</h1><span>3&nbsp; Packages</span></div>
+    <div class="prices">
+      <div class="price item" data-label="Daily"><div><div class="amt">99 ฿ / 7 Days</div><div class="vat">VAT Included: 105.93 ฿</div></div><span class="pill">Daily</span></div>
+      <div class="price item selected" data-label="Monthly"><div><div class="amt">999 ฿ / Month</div><div class="vat">VAT Included: 1,068.93 ฿</div></div><span class="pill">Monthly</span></div>
+      <div class="price item" data-label="Yearly"><div><div class="amt">4,999 ฿ / Year</div><div class="vat">VAT Included: 5,348.93 ฿</div></div><span class="pill">Yearly</span></div>
+    </div>
+    <div class="pay">
+      <h2>Choose how to pay</h2>
+      <div class="paybtn item" data-label="Charge to AIS Bill"><img src="icons/pkg/d-bill.svg" alt=""><span>Charge to AIS Bill</span><img src="icons/pkg/d-chev.svg" alt=""></div>
+      <div class="paybtn item" data-label="QR PromptPay"><img src="icons/pkg/d-qr.svg" alt=""><span>QR PromptPay</span><img src="icons/pkg/d-chev2.svg" alt=""></div>
+      <p class="note">You'll be asked to verify with OTP before payment completes</p>
+    </div>
+  </section>
+
+
+  <div class="scrim"></div>
+  <div class="modal" role="dialog" aria-label="Confirm Subscribe">
+    <div class="mtitle"><b>Confirm Subscribe:</b><span>Charge to AIS Bill</span></div>
+    <div class="mhero"><span class="lg"><img src="icons/pkg/l1.png" alt="PLAY ULTIMATE"></span>
+      <div><div class="nm">PLAY ULTIMATE Monthly Package</div><div class="pr"><b class="m-amt">999 ฿ / Month</b><span class="m-vat">(VAT Included: 1068.93 ฿)</span></div></div></div>
+    <div class="tcbox">
+      <h3>Terms and Conditions of Service</h3>
+      <div class="tcscroll"><p>1. This package is available to AIS postpaid customers who have been active for at least 3 months and are registered as individual customers only.</p><p>2. The PLAY ULTIMATE package is priced at THB 999/month for 12 billing cycles. The price excludes 7% VAT and internet charges.</p><p>3. The package includes access to Netflix, HBO Max, Disney+ Hotstar, iQIYI, Viu, and WeTV at no additional charge while the package remains active.</p><p>4. Once the subscription is successfully activated, a confirmation SMS will be sent with subscription details.</p><p>5. If the PLAY ULTIMATE package is cancelled, access to all included streaming services will be terminated immediately.</p><p>6. AIS PLAY supports streaming on up to 4 devices simultaneously via the AIS PLAY app, website, and supported devices such as Apple TV, Samsung Smart TV, and Chromecast.</p><p>7. Netflix Premium supports streaming on up to 4 devices simultaneously, subject to Netflix Household terms and conditions.</p><p>8. HBO Max Ultimate supports streaming on up to 4 devices simultaneously via the HBO Max app or website.</p><p>9. Disney+ Hotstar Premium supports streaming on up to 4 devices simultaneously via the Disney+ Hotstar app or website.</p><p>10. iQIYI VIP supports streaming on up to 2 devices simultaneously via the iQIYI app or website.</p><p>11. Viu Premium supports streaming on up to 5 devices simultaneously via the Viu app or website.</p><p>12. WeTV VIP supports streaming on up to 2 devices simultaneously via the WeTV app or website.</p><p>The company reserves the right to change the package details, benefits, and terms and conditions without prior notice.</p></div>
+      <img class="tcarrow" src="icons/pkg/c-down.svg" alt="">
+      <div class="scrollbtn mitem" data-act="scroll"><img src="icons/pkg/c-scroll.svg" alt="">Scroll to the bottom</div>
+    </div>
+    <div class="actions">
+      <div class="mbtn cancel mitem" data-act="cancel">Cancel</div>
+      <div class="mbtn agree mitem" data-act="agree"><img src="icons/pkg/c-check.svg" alt="">I Agree and Confirm</div>
+    </div>
+  </div>
+
+  <div class="dlg otpd" role="dialog" aria-label="Confirm OTP">
+    <div class="ohead">
+      <h2>PLAY ULTIMATE</h2>
+      <p>You will be charged <b class="o-amt">฿1,068.93 /Month</b> consecutively.</p>
+      <p>Internet Number: 880XXX0088</p>
+    </div>
+    <div class="pad">
+      <div class="pins"><div class="pin"></div><div class="pin"></div><div class="pin"></div><div class="pin"></div></div>
+      <div class="keys"><div class="key" data-k="1">1</div><div class="key" data-k="2">2</div><div class="key" data-k="3">3</div><div class="key" data-k="4">4</div><div class="key" data-k="5">5</div><div class="key" data-k="6">6</div><div class="key" data-k="7">7</div><div class="key" data-k="8">8</div><div class="key" data-k="9">9</div><div class="key" data-k="del"><img src="icons/pkg/o-backspace.svg" alt="Delete"></div><div class="key" data-k="0">0</div><div class="key blank"></div></div>
+    </div>
+    <p class="sent">OTP has been sent to 081XXX0082.<br>Did not receive OTP? Resend in <span class="o-sec">60</span> seconds.</p>
+    <div class="oacts">
+      <div class="obtn back" data-o="back"><span>Back</span></div>
+      <div class="obtn req" data-o="req"><span>Request OTP</span></div>
+      <div class="obtn done" data-o="done"><span>Done</span></div>
+    </div>
+  </div>
+  <div class="dlg okd" role="dialog" aria-label="Subscription status">
+    <div class="okhead">
+      <img src="icons/pkg/o-check-circle.svg" alt="">
+      <div><h2>Your package is almost ready</h2><p>We’re confirming your purchase.<br>We’ll send you an SMS when your package is ready to use within 15 mins.</p></div>
+    </div>
+    <hr>
+    <div class="okcard"><div class="n">PLAY ULTIMATE</div><div class="a ok-amt">999 ฿ / Month</div><div class="v ok-vat">VAT Included: 1,068.93 ฿</div><div class="d ok-date"></div></div>
+  </div>
+  <div id="toast"></div>
+</div></div>
+
+<script>
+(function(){
+  var frame = document.getElementById('frame'), screen = document.getElementById('screen');
+  function fit(){
+    var k = Math.min(innerWidth / 1920, innerHeight / 1080);
+    frame.style.width = 1920 * k + 'px'; frame.style.height = 1080 * k + 'px';
+    frame.style.marginLeft = -960 * k + 'px'; frame.style.marginTop = -540 * k + 'px';
+    screen.style.transform = 'scale(' + k + ')';
+  }
+  addEventListener('resize', fit); fit();
+
+  var $ = function(q){ return Array.prototype.slice.call(document.querySelectorAll(q)); };
+  // two columns: the tabs (left/right between them), and the right column (prices then payment, up/down)
+  var tabs = $('.tab:not(.disabled)'), right = $('.price').concat($('.paybtn'));
+  var cur = { col: 1, tab: 0, r: 3 };   // starts on Charge to AIS Bill, as in Figma
+  function paint(){
+    $('.item').forEach(function(e){ e.classList.remove('focused'); });
+    (cur.col === 0 ? tabs[cur.tab] : right[cur.r]).classList.add('focused');
+    // content switcher: moving onto a tab switches to it straight away (no Enter needed)
+    if(cur.col === 0) showTab(cur.tab);
+  }
+  var toastEl = document.getElementById('toast'), toastT;
+  function toast(m){ toastEl.textContent = m; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove('on'); }, 1600); }
+  function showTab(i){
+    tabs.forEach(function(t, j){ t.classList.toggle('active', j === i); });
+    document.body.classList.toggle('show-terms', tabs[i].dataset.tab === 'terms');
+  }
+  function select(el){
+    if(el.classList.contains('tab')){ showTab(tabs.indexOf(el)); return; }
+    if(el.classList.contains('price')){ $('.price').forEach(function(p){ p.classList.toggle('selected', p === el); }); toast(el.dataset.label + ' plan selected'); return; }
+    if(el.dataset.label === 'Charge to AIS Bill'){ openConfirm(); return; }
+    var plan = document.querySelector('.price.selected .amt').textContent;
+    toast(el.dataset.label + ' · ' + plan + ' (demo)');
+  }
+  function back(){
+    try { if(document.referrer && /movie-detail\.html/.test(document.referrer) && history.length > 1){ history.back(); return; } } catch(e){}
+    location.href = 'movie-detail.html#packages';
+  }
+  // ---- Confirm Subscribe popup ----
+  // Opens on Charge to AIS Bill. "I Agree and Confirm" stays disabled until the terms are read to the bottom
+  // (Scroll to the bottom, or scrolling with the arrows); then focus moves to it. Cancel / Back closes the popup.
+  var tc = document.querySelector('.tcscroll'), tcArrow = document.querySelector('.tcarrow');
+  var mBtns = { scroll: document.querySelector('.scrollbtn'), cancel: document.querySelector('.mbtn.cancel'), agree: document.querySelector('.mbtn.agree') };
+  var mFocus = 'scroll';
+  function readAll(){ return tc.scrollTop + tc.clientHeight >= tc.scrollHeight - 4; }
+  function mPaint(){
+    var read = document.body.classList.contains('read');
+    Object.keys(mBtns).forEach(function(k){ mBtns[k].classList.toggle('focused', k === mFocus); });
+    tcArrow.src = read ? 'icons/pkg/c-up.svg' : 'icons/pkg/c-down.svg';
+  }
+  function markRead(){
+    if(document.body.classList.contains('read')) return;
+    document.body.classList.add('read');
+    if(mFocus === 'scroll') mFocus = 'agree';
+    mPaint();
+  }
+  tc.addEventListener('scroll', function(){ if(tc.scrollTop > 0 && readAll()) markRead(); });
+  function openConfirm(){
+    // the popup shows the plan picked on the right
+    var sel = document.querySelector('.price.selected');
+    document.querySelector('.m-amt').textContent = sel.querySelector('.amt').textContent;
+    document.querySelector('.m-vat').textContent = '(' + sel.querySelector('.vat').textContent.replace(',', '') + ')';
+    tc.style.scrollBehavior = 'auto'; tc.scrollTop = 0; tc.style.scrollBehavior = '';
+    document.body.classList.remove('read');
+    document.body.classList.add('confirm');
+    mFocus = 'scroll'; mPaint();
+  }
+  function closeConfirm(){ document.body.classList.remove('confirm'); paint(); }
+  function mSelect(k){
+    if(k === 'scroll'){ tc.scrollTop = tc.scrollHeight; markRead(); return; }
+    if(k === 'cancel'){ closeConfirm(); return; }
+    if(k === 'agree'){
+      if(!document.body.classList.contains('read')){ toast('Please read the terms to the bottom first'); return; }
+      document.body.classList.remove('confirm'); openOtp();
+    }
+  }
+  // ---- OTP popup: a 4-digit code typed on the on-screen keypad (or the number keys); Done unlocks at 4 digits ----
+  var otpKeys = $('.key:not(.blank)'), pins = $('.pin'), oBtns = $('.obtn'), code = '', otpT = null;
+  // focus: keypad as a 3-column grid (row 3 = del, 0), then the action row
+  var oF = { area: 'keys', k: 0, b: 0 };
+  function otpPaint(){
+    pins.forEach(function(p, i){ p.textContent = code[i] || ''; p.classList.toggle('filled', i < code.length); p.classList.toggle('cur', i === Math.min(code.length, 3) && (code.length < 4 || i === 3)); });
+    var ready = code.length === 4;
+    document.querySelector('.obtn.done').classList.toggle('ready', ready);
+    otpKeys.forEach(function(k, i){ k.classList.toggle('focused', oF.area === 'keys' && i === oF.k); });
+    oBtns.forEach(function(b, i){ b.classList.toggle('focused', oF.area === 'btns' && i === oF.b); });
+  }
+  function startCountdown(){
+    var n = 60, el = document.querySelector('.o-sec'); el.textContent = n; clearInterval(otpT);
+    otpT = setInterval(function(){ n = Math.max(0, n - 1); el.textContent = n; if(!n) clearInterval(otpT); }, 1000);
+  }
+  function openOtp(){
+    var sel = document.querySelector('.price.selected'), vat = sel.querySelector('.vat').textContent.replace('VAT Included: ', '').replace(' ฿', '');
+    var per = sel.querySelector('.amt').textContent.split('/')[1].trim();
+    document.querySelector('.o-amt').textContent = '฿' + vat + ' /' + per;
+    code = ''; oF = { area: 'keys', k: 0, b: 0 };
+    document.body.classList.add('otp'); startCountdown(); otpPaint();
+  }
+  function typeKey(k){
+    if(k === 'del') code = code.slice(0, -1);
+    else if(code.length < 4) code += k;
+    if(code.length === 4){ oF = { area: 'btns', k: oF.k, b: 2 }; }   // code complete: jump to Done
+    otpPaint();
+  }
+  function otpAct(a){
+    if(a === 'back'){ clearInterval(otpT); document.body.classList.remove('otp'); openConfirm(); markRead(); mFocus = 'agree'; mPaint(); return; }
+    if(a === 'req'){ code = ''; startCountdown(); otpPaint(); toast('A new OTP has been sent'); return; }
+    if(a === 'done'){
+      if(code.length < 4){ toast('Enter the 4-digit OTP first'); return; }
+      clearInterval(otpT); document.body.classList.remove('otp'); openDone();
+    }
+  }
+  function openDone(){
+    var sel = document.querySelector('.price.selected');
+    document.querySelector('.ok-amt').textContent = sel.querySelector('.amt').textContent;
+    document.querySelector('.ok-vat').textContent = sel.querySelector('.vat').textContent;
+    // service period: from today until the day before the same date next period
+    var d0 = new Date(), d1 = new Date(d0), lbl = sel.dataset.label;
+    if(lbl === 'Daily') d1.setDate(d1.getDate() + 6); else if(lbl === 'Yearly'){ d1.setFullYear(d1.getFullYear() + 1); d1.setDate(d1.getDate() - 1); } else { d1.setMonth(d1.getMonth() + 1); d1.setDate(d1.getDate() - 1); }
+    var f = function(d){ return d.getDate() + ' ' + d.toLocaleString('en-GB', { month: 'short' }) + ' ' + d.getFullYear(); };
+    document.querySelector('.ok-date').textContent = f(d0) + ' | 00:00:00 - ' + f(d1) + ' | 23:59:59';
+    document.body.classList.add('done');
+  }
+  addEventListener('keydown', function(e){
+    var b = document.body.classList;
+    if(b.contains('done')){
+      // any key closes the status popup and returns to the page
+      finishPurchase(); e.preventDefault(); e.stopImmediatePropagation(); return;
+    }
+    if(!b.contains('otp')) return;
+    if(/^[0-9]$/.test(e.key)) typeKey(e.key);
+    else if(e.key === 'Backspace' && code.length) typeKey('del');
+    else if(e.key === 'Escape' || e.key === 'Backspace') otpAct('back');
+    else if(oF.area === 'keys'){
+      var r = Math.floor(oF.k / 3), c = oF.k % 3, last = otpKeys.length - 1;
+      if(e.key === 'ArrowRight' && c < 2 && oF.k < last) oF.k++;
+      else if(e.key === 'ArrowLeft' && c > 0) oF.k--;
+      else if(e.key === 'ArrowUp' && r > 0) oF.k -= 3;
+      else if(e.key === 'ArrowDown'){ if(oF.k + 3 <= last) oF.k += 3; else { oF.area = 'btns'; oF.b = code.length === 4 ? 2 : 0; } }
+      else if(e.key === 'Enter' || e.key === ' ') typeKey(otpKeys[oF.k].dataset.k);
+    } else {
+      if(e.key === 'ArrowRight') oF.b = Math.min(oBtns.length - 1, oF.b + 1);
+      else if(e.key === 'ArrowLeft') oF.b = Math.max(0, oF.b - 1);
+      else if(e.key === 'ArrowUp'){ oF.area = 'keys'; oF.k = 9; }
+      else if(e.key === 'Enter' || e.key === ' ') otpAct(oBtns[oF.b].dataset.o);
+    }
+    e.preventDefault(); e.stopImmediatePropagation(); otpPaint();
+  }, true);
+  otpKeys.forEach(function(k, i){ k.addEventListener('click', function(){ oF = { area: 'keys', k: i, b: 0 }; typeKey(k.dataset.k); }); });
+  oBtns.forEach(function(bt, i){ bt.addEventListener('click', function(){ oF = { area: 'btns', k: 0, b: i }; otpPaint(); otpAct(bt.dataset.o); }); });
+  // success popup closed: back to the District 9 page, now subscribed (its main button becomes Play)
+  function finishPurchase(){
+    location.href = 'movie-detail.html?subscribed=1';
+  }
+  document.querySelector('.okd').addEventListener('click', finishPurchase);
+
+  addEventListener('keydown', function(e){
+    if(!document.body.classList.contains('confirm')) return;
+    var read = document.body.classList.contains('read');
+    if(e.key === 'ArrowLeft' && mFocus === 'agree') mFocus = 'cancel';
+    else if(e.key === 'ArrowRight' && mFocus === 'cancel' && read) mFocus = 'agree';
+    else if(e.key === 'ArrowDown'){ if(mFocus === 'scroll'){ tc.scrollTop += 160; if(readAll()) markRead(); } else if(!read) mFocus = 'scroll'; }
+    else if(e.key === 'ArrowUp'){ if(mFocus !== 'scroll' && !read) mFocus = 'scroll'; else tc.scrollTop -= 160; }
+    else if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){}
+    else if(e.key === 'Enter' || e.key === ' ') mSelect(mFocus);
+    else if(e.key === 'Escape' || e.key === 'Backspace') closeConfirm();
+    else if(mFocus === 'scroll' && e.key === 'ArrowRight'){}
+    e.preventDefault(); e.stopImmediatePropagation(); mPaint();
+  }, true);
+  Object.keys(mBtns).forEach(function(k){ mBtns[k].addEventListener('click', function(){ mFocus = (k === 'agree' && !document.body.classList.contains('read')) ? mFocus : k; mPaint(); mSelect(k); }); });
+  document.querySelector('.scrim').addEventListener('click', function(){ if(document.body.classList.contains('confirm')) closeConfirm(); });
+
+  addEventListener('keydown', function(e){
+    var h = true;
+    if(cur.col === 0){
+      if(e.key === 'ArrowLeft') cur.tab = Math.max(0, cur.tab - 1);
+      else if(e.key === 'ArrowRight'){ if(cur.tab < tabs.length - 1) cur.tab++; else cur.col = 1; }
+      else h = false;
+    } else {
+      if(e.key === 'ArrowUp') cur.r = Math.max(0, cur.r - 1);
+      else if(e.key === 'ArrowDown') cur.r = Math.min(right.length - 1, cur.r + 1);
+      else if(e.key === 'ArrowLeft'){ cur.col = 0; cur.tab = 0; }   // from anywhere on the right, Left lands on Details
+      else h = false;
+    }
+    if(!h){
+      if(e.key === 'Enter' || e.key === ' '){ select(cur.col === 0 ? tabs[cur.tab] : right[cur.r]); h = true; }
+      else if(e.key === 'Escape' || e.key === 'Backspace'){ back(); h = true; }
+    }
+    if(h){ e.preventDefault(); paint(); }
+  });
+  tabs.forEach(function(t, i){ t.addEventListener('click', function(){ cur.col = 0; cur.tab = i; paint(); select(t); }); });
+  right.forEach(function(el, i){ el.addEventListener('click', function(){ cur.col = 1; cur.r = i; paint(); select(el); }); });
+  paint();
+})();
+</script>
+</body>
+</html>

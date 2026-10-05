@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>District 9 · Movie Detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<!--
+  Movie detail page (Figma "01 / Movie Detail / District 9", node 628:68312), opened from the District 9 card in
+  Home's Top Pick For You rail. A 1920x1080 TV screen scaled to the window, like home.html.
+  Remote / keyboard: arrows move focus (top bar, then the action buttons), Enter selects, Esc / Back returns to Home.
+  The Figma frame's background is a video; this page uses that video's still (Figma only exports stills) with the frame's warm haze over it.
+-->
+<style>
+  :root{ color-scheme:dark; }
+  html,body{ margin:0; height:100%; background:#000; overflow:hidden; font-family:'Plus Jakarta Sans', system-ui, sans-serif; color:#fff; }
+  #frame{ position:absolute; left:50%; top:50%; overflow:hidden; background:#16130f; }
+  #screen{ position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:top left; }
+
+  /* background still + the frame's haze: a warm radial glow rising from the bottom, and shade behind the text */
+  .bg{ position:absolute; left:0; right:0; top:-44px; bottom:0; background:url('posters/district9-detail.jpg?v=3') center top / cover no-repeat; }   /* top:-44px hides the black band at the top of the still */   /* the still of the Figma frame's background video */
+  .haze{ position:absolute; left:-412px; top:420px; width:2727px; height:712px;
+    background:radial-gradient(ellipse 3300px 600px at 57% 17%, rgba(180,182,170,0) 21%, #b7a48f 100%); opacity:.92; }
+  .shade{ position:absolute; inset:0;
+    background:linear-gradient(90deg, rgba(20,16,12,.62) 0%, rgba(20,16,12,.34) 34%, rgba(20,16,12,0) 58%),
+               linear-gradient(180deg, rgba(10,8,6,.45) 0%, rgba(10,8,6,0) 18%); }
+
+  /* top bar (same as Home's) */
+  .topnav{ position:absolute; left:0; top:0; width:1920px; box-sizing:border-box; padding:24px 110px 0; display:flex; align-items:center; }
+  .profile{ width:60px; height:60px; border-radius:999px; overflow:hidden; flex:0 0 auto; }
+  .profile img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .center{ display:flex; align-items:center; gap:12px; margin-left:20px; }
+  .navsearch{ width:60px; height:60px; margin:0 8px; border-radius:999px; display:flex; align-items:center; justify-content:center; }
+  .navsearch img{ width:32px; height:32px; display:block; }
+  .navtab{ height:60px; padding:0 20px; border-radius:999px; display:flex; align-items:center; font-size:24px; line-height:1.2;
+    text-shadow:0 0 6px rgba(0,0,0,.4); white-space:nowrap; }
+  .navtab.active{ background:rgba(222,222,222,.5); backdrop-filter:blur(10px); }
+
+  /* hero metadata */
+  .meta{ position:absolute; left:110px; bottom:286px; width:840px; display:flex; flex-direction:column; gap:40px; }
+  .info{ display:flex; flex-direction:column; gap:20px; }
+  h1{ margin:0; font-size:64px; font-weight:700; text-shadow:0 0 4px rgba(0,0,0,.5); }
+  .channel{ display:flex; align-items:center; gap:10px; }
+  .channel .logo{ width:114px; height:33px; object-fit:cover; display:block; }
+  .chip{ height:38px; box-sizing:border-box; padding:2px 10px; border:1px solid #fff; border-radius:9px; display:flex; align-items:center; font-size:24px; }
+  .chip.plain{ border:0; padding:2px 5px; }
+  .chip.small{ font-size:20px; }
+  .desc{ margin:0; width:645px; font-size:28px; opacity:.8; text-shadow:0 4px 4px rgba(0,0,0,.6); }
+
+  /* action buttons: frosted warm glass */
+  .actions{ display:flex; align-items:center; gap:32px; height:100px; }
+  .btn{ position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff;
+    /* frosted glass: a strong blur of the picture behind, lifted with a light wash and a brighter highlight */
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,.04) 6%, rgba(255,255,255,.34) 100%), rgba(255,255,255,.18);
+    backdrop-filter:blur(24px) saturate(1.3) brightness(1.15); -webkit-backdrop-filter:blur(24px) saturate(1.3) brightness(1.15);
+    box-shadow:inset -1px 3px 17px rgba(255,255,255,.28), inset 0 1px 0 rgba(255,255,255,.45);
+    transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s ease; }
+  .btn.package{ height:100px; padding:0 32px; gap:10px; border-radius:9999px; border:3px solid rgba(255,255,255,.8); box-sizing:border-box; }
+  .btn.package img{ width:40px; height:40px; }
+  .btn.package .pk-play{ display:none; }
+  body.subscribed .btn.package .pk-play{ display:block; }   /* subscribed: the main button is Play */
+  .btn.package span{ font-size:36px; font-weight:600; text-shadow:0 4px 4px rgba(0,0,0,.25); }
+  .btn.icon{ width:85px; height:85px; border-radius:12px; border:1px solid rgba(255,255,255,.8); box-sizing:border-box; }
+  .btn.icon img{ width:45px; height:45px; }
+  .btn.icon.on{ background:rgba(255,255,255,.85); }
+  .btn.icon.on img{ filter:brightness(0); }
+  /* focused: Figma's focused state, a light ring around the glass and a small lift */
+  .btn.focused{ transform:scale(1.06); box-shadow:inset -1px 3px 17px rgba(255,255,255,.28), inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 4px #e8e8e8, 0 0 24px rgba(255,255,255,.35); }
+  /* tooltip over a focused icon button */
+  .btn .tip{ position:absolute; left:50%; bottom:calc(100% + 18px); transform:translate(-50%, 6px); padding:10px 18px; border-radius:12px;
+    background:rgba(20,20,24,.86); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); font-size:22px; font-weight:600; white-space:nowrap;
+    opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s cubic-bezier(.2,0,0,1); }
+  .btn .tip::after{ content:''; position:absolute; left:50%; top:100%; transform:translateX(-50%); border:8px solid transparent; border-top-color:rgba(20,20,24,.86); }
+  .btn.focused .tip{ opacity:1; transform:translate(-50%, 0); }
+  .topnav .item{ cursor:pointer; transition:background .15s ease, box-shadow .15s ease; }
+  .topnav .item.focused{ background:rgba(222,222,222,.5); box-shadow:0 0 0 4px #e8e8e8; }
+
+
+  /* ---------- Package selection (Figma "02 / Package Selection / District 9", 628:69703) ----------
+     Same page: View Package swaps the details for this view (body.pkg); Esc / Back swaps back. */
+  .bgpkg{ position:absolute; inset:0; background:url('icons/pkg/bg.jpg') center / cover no-repeat; opacity:0; transition:opacity .35s ease; }
+  .bgpkg::after{ content:''; position:absolute; inset:0; background:rgba(0,0,0,.7); }
+  .meta, .pkgview{ transition:opacity .3s ease, transform .3s cubic-bezier(.2,0,0,1); }
+  .pkgview{ position:absolute; inset:0; opacity:0; pointer-events:none; transform:translateX(40px); }
+  body.pkg .bgpkg{ opacity:1; }
+  body.pkg .meta{ opacity:0; pointer-events:none; transform:translateX(-40px); }
+  body.pkg .pkgview{ opacity:1; pointer-events:auto; transform:none; }
+  body.pkg .haze{ opacity:.35; }
+
+  .pkgleft{ position:absolute; left:108px; top:183px; width:667px; height:745px; display:flex; flex-direction:column; justify-content:space-between; opacity:.9; }
+  .pkgleft .head{ display:flex; flex-direction:column; gap:20px; }
+  .pkgleft .kicker{ font-size:36px; font-weight:600; text-shadow:0 0 4px rgba(0,0,0,.5); }
+  .pkgleft .account{ display:flex; flex-direction:column; align-items:center; gap:32px; width:441px; }
+  .pkgleft .account p{ margin:0; font-size:32px; font-weight:700; text-shadow:0 0 4px rgba(0,0,0,.5); }
+  .glassbtn{ position:relative; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; box-sizing:border-box;
+    /* default: a faint glass pill; the bright 4px outline is the focused state only */
+    border:2px solid rgba(255,255,255,.22); border-radius:50px;
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.14) 100%), rgba(255,255,255,.08);
+    backdrop-filter:blur(24px) saturate(1.3) brightness(1.15); -webkit-backdrop-filter:blur(24px) saturate(1.3) brightness(1.15);
+    box-shadow:inset -1px 3px 17px rgba(255,255,255,.28); font-weight:700; text-shadow:0 4px 4px rgba(0,0,0,.25);
+    transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s ease; }
+  .glassbtn.bring{ width:100%; padding:32px 40px; font-size:28px; line-height:1.2; white-space:nowrap; }
+  .glassbtn.focused{ border:4px solid rgba(255,255,255,.85); background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,.04) 6%, rgba(255,255,255,.34) 100%), rgba(255,255,255,.18); }
+  .glassbtn.focused, .seeall.focused{ transform:scale(1.05); box-shadow:inset -1px 3px 17px rgba(255,255,255,.28), 0 0 0 4px #e8e8e8, 0 0 24px rgba(255,255,255,.35); }
+
+  /* exact Figma sizes (628:76050): a 1127px row, 24px gaps, bottom-aligned. A card is 354px wide (1px border around a
+     352px body: 40px badge + 750.6px content); the focused one grows to 371 x 818 (8px padding + 1.5px border) and its
+     price block takes in the Subscribe button. */
+  .pkgcards{ position:absolute; left:735px; top:118px; width:1127px; height:818px; display:flex; gap:24px; align-items:flex-end; }
+  .pcard{ width:354px; flex:0 0 auto; box-sizing:border-box; position:relative; display:flex; flex-direction:column; border-radius:36px; cursor:pointer;
+    background:rgba(31,31,31,.94); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.13); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 12px 12px rgba(0,0,0,.3);
+    transition:width .22s cubic-bezier(.2,0,0,1), padding .22s cubic-bezier(.2,0,0,1), border-color .22s ease, box-shadow .22s ease; }
+  .pcard.focused{ width:371px; padding:8px; border:1.5px solid rgba(255,255,255,.5); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 12px 12px rgba(0,0,0,.3), 0 0 0 3px rgba(232,232,232,.55); }
+  .pcard .badge{ height:40px; box-sizing:border-box; background:rgba(255,255,255,.09); border-radius:36px 36px 0 0; padding:8px 16px; text-align:center; font-size:16px; font-weight:700; line-height:24px; letter-spacing:.15px; }
+  .pcard.focused .badge{ border-radius:28px 28px 0 0; }
+  /* stairs: the cards always step down left to right at Figma's heights, whichever one is focused; inside, the
+     features block gives up its spare space when a focused card needs room for Subscribe */
+  .pcard:nth-child(1){ height:818px; }
+  .pcard:nth-child(2){ height:792.6px; }
+  .pcard:nth-child(3){ height:752.6px; }
+  .pcard .body{ flex:1; min-height:0; display:flex; flex-direction:column; gap:24px; }
+  .pcard .ptitle{ flex:0 0 96px; height:96px; box-sizing:border-box; display:flex; align-items:center; gap:12px; padding:16px 16px 0; }
+  .pcard .ptitle .lg{ width:80px; height:80px; border-radius:8px; background:#000; flex:0 0 auto; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .pcard .ptitle .lg img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .pcard .ptitle b{ font-size:22px; line-height:28px; font-weight:700; }
+  .pcard .mid{ flex:0 1 412px; min-height:380px; display:flex; flex-direction:column; }
+  .pcard .chans{ flex:0 0 244px; height:244px; box-sizing:border-box; margin:0 16px; padding:16px; border-radius:20px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); display:flex; flex-direction:column; gap:16px; }
+  .pcard .grid{ height:128px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:16px; }
+  .tile{ width:56px; height:56px; border-radius:10px; overflow:hidden; background:#000; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .tile img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .tile.cover img{ object-fit:cover; }
+  .tile.white{ background:#fff; }
+  .tile.pad img{ width:86%; height:86%; }
+  .tile.more{ background:#d9d9d9; color:#fff; font-size:20px; font-weight:600; }
+  .pcard .chanlist{ display:flex; flex-direction:column; gap:8px; }
+  .pcard .small{ font-size:14px; font-weight:600; line-height:20px; letter-spacing:.1px; }
+  .pcard .row40{ display:flex; gap:10px; }
+  .row40 .tile{ width:40px; height:40px; border-radius:8px; }
+  .pcard .feats{ flex:1 1 168px; min-height:136px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; gap:8px; padding:0 16px; }
+  .pcard .feat{ height:40px; display:flex; align-items:center; gap:8px; font-size:16px; line-height:24px; letter-spacing:.2px; }
+  .pcard .feat img{ width:40px; height:40px; flex:0 0 auto; }
+  .pcard .price{ flex:1 0 auto; background:rgba(255,255,255,.05); border-radius:0 0 36px 36px; padding:16px; display:flex; flex-direction:column; gap:16px; }
+  .pcard.focused .price{ border-radius:0 0 28px 28px; }
+  .pcard .amtwrap{ display:flex; flex-direction:column; gap:8px; }
+  .pcard .amt{ height:56px; display:flex; align-items:baseline; gap:8px; text-shadow:1px 1px 2px rgba(0,0,0,.7); }
+  .pcard .amt b{ font-size:48px; font-weight:600; line-height:56px; }
+  .pcard.focused .amt b{ font-size:56px; }
+  .pcard .amt span{ font-size:20px; }
+  .pcard .vat{ font-size:12px; line-height:15px; }
+  /* Subscribe appears on the focused card (320 x 80) */
+  .pcard .subscribe{ display:none; align-items:center; justify-content:center; gap:8px; height:80px; box-sizing:border-box; border-radius:9999px; border:3px solid #e8e8e8; font-size:24px; font-weight:600;
+    background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,0) 6%, rgba(255,255,255,.3) 100%), rgba(255,255,255,.2); box-shadow:inset -1px 3px 17px rgba(255,255,255,.16); }
+  .pcard .subscribe img{ width:32px; height:32px; }
+  .pcard.focused .subscribe{ display:flex; }
+  .seeall{ position:absolute; left:1123px; top:968px; width:350px; height:86px; border-radius:9999px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    background:rgba(28,28,28,.8); color:rgba(232,232,232,.85); font-size:31px; font-weight:500; transition:transform .22s cubic-bezier(.2,0,0,1), box-shadow .22s ease; }
+  #toast{ position:absolute; left:50%; bottom:80px; transform:translateX(-50%); padding:14px 26px; border-radius:999px;
+    background:rgba(20,20,24,.85); font-size:24px; opacity:0; transition:opacity .2s ease; pointer-events:none; }
+  #toast.on{ opacity:1; }
+</style>
+</head>
+<body>
+<div id="frame"><div id="screen">
+  <div class="bg"></div>
+  <div class="bgpkg"></div>
+  <div class="haze"></div>
+  <div class="shade"></div>
+
+  <nav class="topnav">
+    <div class="profile item" data-label="Profile"><img src="icons/profile-tv.png" alt="Profile"></div>
+    <div class="center">
+      <div class="navsearch item" data-label="Search"><img src="icons/nav-search.svg" alt="Search"></div>
+      <div class="navtab item active" data-label="Home" data-href="home.html">Home</div>
+      <div class="navtab item" data-label="My list">My list</div>
+      <div class="navtab item" data-label="Shorts">Shorts</div>
+      <div class="navtab item" data-label="Games">Games</div>
+      <div class="navtab item" data-label="Store">Store</div>
+    </div>
+  </nav>
+
+  <section class="meta">
+    <div class="info">
+      <h1>District 9</h1>
+      <div class="channel">
+        <img class="logo" src="badges/logo-monomax-wide.png" alt="Monomax">
+        <span class="chip plain">1 hr. 52 min</span>
+        <span class="chip">Sci-Fi</span>
+        <span class="chip">16+</span>
+        <span class="chip small">4K</span>
+        <span class="chip">Movie</span>
+      </div>
+      <p class="desc">An extraterrestrial race forced to live in slum-like conditions on Earth suddenly finds a kindred spirit in a government agent who is exposed to their biotechnology.</p>
+    </div>
+    <div class="actions">
+      <div class="btn package item" data-label="View Package"><img class="pk-play" src="icons/detail-play.svg" alt=""><span>View Package</span></div>
+      <div class="btn icon item" data-label="My List" data-tip="Add to My List" data-tip-on="Remove from My List" data-toggle="Added to My List|Removed from My List"><img src="icons/detail-plus.svg" alt="Add to My List"><span class="tip"></span></div>
+      <div class="btn icon item" data-label="Like" data-tip="I like this" data-tip-on="Remove like" data-toggle="You liked this|Like removed" data-pair="dislike"><img src="icons/detail-like.svg" alt="Like"><span class="tip"></span></div>
+      <div class="btn icon item" data-label="Dislike" data-tip="Not for me" data-tip-on="Remove dislike" data-toggle="You disliked this|Dislike removed" data-pair="like"><img src="icons/detail-dislike.svg" alt="Dislike"><span class="tip"></span></div>
+    </div>
+  </section>
+
+
+  <section class="pkgview" aria-label="Packages">
+    <div class="pkgleft">
+      <div class="head">
+        <div class="kicker">Get Access to</div>
+        <h1>District 9</h1>
+        <div class="channel">
+          <img class="logo" src="badges/logo-monomax-wide.png" alt="Monomax">
+          <span class="chip plain">1 hr. 52 min</span><span class="chip">Sci-Fi</span><span class="chip">16+</span><span class="chip small">4K</span><span class="chip">Movie</span>
+        </div>
+      </div>
+      <div class="account">
+        <p>I already have my account</p>
+        <div class="glassbtn bring item" data-label="Bring Me To Monomax">Bring Me To Monomax</div>
+      </div>
+    </div>
+    <div class="pkgcards"><div class="pcard item" data-label="PLAY ULTIMATE Monthly Package"><div class="badge">Recommend</div><div class="body"><div class="ptitle"><span class="lg"><img src="icons/pkg/l1.png" alt=""></span><b>PLAY ULTIMATE Monthly Package</b></div><div class="mid"><div class="chans"><div class="grid"><span class="tile "><img src="icons/pkg/l2.png" alt=""></span><span class="tile "><img src="icons/pkg/l3.png" alt=""></span><span class="tile "><img src="icons/pkg/l4.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l5.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l6.png" alt=""></span></div><div class="chanlist"><div class="small">99 Premium Channels</div><div class="row40"><span class="tile cover"><img src="icons/pkg/l7.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l8.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l9.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l10.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l11.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l12.png" alt=""></span></div></div></div><div class="feats"><div class="feat"><img src="icons/pkg/i4k.svg" alt="">Up to 4K Ultra HD Resolution</div><div class="feat"><img src="icons/pkg/idolby.svg" alt="">Audio 5.1 Up to Dolby Atmos</div><div class="feat"><img src="icons/pkg/iscreen.svg" alt="">4 Screen at once</div></div></div><div class="price"><div class="amtwrap"><div class="amt"><b>999 ฿</b><span>/Month</span></div><div class="vat">(Exclude VAT)</div></div><div class="subscribe">Subscribe<img src="icons/pkg/ichev.svg" alt=""></div></div></div></div><div class="pcard item" data-label="HBO MAX Standard Package"><div class="badge">Best Seller</div><div class="body"><div class="ptitle"><span class="lg"><img src="icons/pkg/l3.png" alt=""></span><b>HBO MAX Standard Package</b></div><div class="mid"><div class="chans"><div class="grid"><span class="tile "><img src="icons/pkg/l3.png" alt=""></span></div><div class="chanlist"><div class="small">6 Premium Channels</div><div class="row40"><span class="tile "><img src="icons/pkg/l13.png" alt=""></span><span class="tile cover"><img src="icons/pkg/l14.png" alt=""></span><span class="tile "><img src="icons/pkg/l15.png" alt=""></span><span class="tile "><img src="icons/pkg/l16.png" alt=""></span><span class="tile "><img src="icons/pkg/l17.png" alt=""></span></div></div></div><div class="feats"><div class="feat"><img src="icons/pkg/i4k.svg" alt="">Up to 4K Ultra HD Resolution</div><div class="feat"><img src="icons/pkg/idolby.svg" alt="">Audio 5.1 Up to Dolby Atmos</div><div class="feat"><img src="icons/pkg/iscreen.svg" alt="">4 Screen at once</div></div></div><div class="price"><div class="amtwrap"><div class="amt"><b>199 ฿</b><span>/Month</span></div><div class="vat">(Exclude VAT)</div></div><div class="subscribe">Subscribe<img src="icons/pkg/ichev.svg" alt=""></div></div></div></div><div class="pcard item" data-label="PLAY ALL"><div class="body"><div class="ptitle"><span class="lg"><img src="icons/pkg/l18.png" alt=""></span><b>PLAY ALL</b></div><div class="mid"><div class="chans"><div class="grid"><span class="tile white cover"><img src="icons/pkg/l19.png" alt=""></span><span class="tile white pad"><img src="icons/pkg/l20.png" alt=""></span><span class="tile white pad"><img src="icons/pkg/l21.png" alt=""></span><span class="tile white cover"><img src="icons/pkg/l22.png" alt=""></span><span class="tile white pad"><img src="icons/pkg/l23.png" alt=""></span><span class="tile white cover"><img src="icons/pkg/l24.png" alt=""></span><span class="tile white pad"><img src="icons/pkg/l25.png" alt=""></span><span class="tile more">13+</span></div><div class="chanlist"><div class="small">99 Premium Channels</div><div class="row40"><span class="tile white cover"><img src="icons/pkg/l28.png" alt=""></span><span class="tile white cover"><img src="icons/pkg/l29.png" alt=""></span><span class="tile white cover"><img src="icons/pkg/l30.png" alt=""></span><span class="tile white cover"><img src="icons/pkg/l31.png" alt=""></span><span class="tile white cover"><img src="icons/pkg/l32.png" alt=""></span><span class="tile white pad"><img src="icons/pkg/l33.png" alt=""></span></div></div></div><div class="feats"><div class="feat"><img src="icons/pkg/ihd.svg" alt="">Full HD 1080p</div><div class="feat"><img src="icons/pkg/idolby.svg" alt="">Audio 5.1 Up to Dolby Atmos</div><div class="feat"><img src="icons/pkg/iscreen.svg" alt="">4 Screen at once</div></div></div><div class="price"><div class="amtwrap"><div class="amt"><b>1,999 ฿</b><span>/Year</span></div><div class="vat">(Exclude VAT)</div></div><div class="subscribe">Subscribe<img src="icons/pkg/ichev.svg" alt=""></div></div></div></div></div>
+    <div class="seeall item" data-label="See all Packages">See&nbsp; all Packages</div>
+  </section>
+  <div id="toast"></div>
+</div></div>
+
+<script>
+(function(){
+  // ---- fit the 1920x1080 screen into the window ----
+  var frame = document.getElementById('frame'), screen = document.getElementById('screen');
+  function fit(){
+    var k = Math.min(innerWidth / 1920, innerHeight / 1080);
+    frame.style.width = 1920 * k + 'px'; frame.style.height = 1080 * k + 'px';
+    frame.style.marginLeft = -960 * k + 'px'; frame.style.marginTop = -540 * k + 'px';
+    screen.style.transform = 'scale(' + k + ')';
+  }
+  addEventListener('resize', fit); fit();
+
+  // ---- focus rows. Details view: the top bar and the action buttons (starts on View Package).
+  //      Package view (same page, body.pkg): top bar, then Bring Me To Monomax + the 3 package cards, then See all Packages.
+  var $ = function(q){ return Array.prototype.slice.call(document.querySelectorAll(q)); };
+  var nav = $('.topnav .item');
+  var VIEWS = {
+    detail: { rows: [nav, $('.actions .item')], start: { row: 1, col: [2, 0] } },
+    pkg:    { rows: [nav, $('.pkgleft .item').concat($('.pcard')), $('.seeall')], start: { row: 1, col: [2, 1, 0] } }
+  };
+  var view = 'detail', rows = VIEWS.detail.rows, cur = { row: 1, col: [2, 0] };
+  function setView(v){
+    view = v; rows = VIEWS[v].rows;
+    cur = { row: VIEWS[v].start.row, col: VIEWS[v].start.col.slice() };
+    document.body.classList.toggle('pkg', v === 'pkg');
+    document.querySelectorAll('.item.focused').forEach(function(e){ e.classList.remove('focused'); });
+    paint();
+  }
+  function paint(){
+    rows.forEach(function(r, ri){ r.forEach(function(el, ci){ el.classList.toggle('focused', ri === cur.row && ci === cur.col[ri]); }); });
+    // tooltips say what the button does now (add / remove)
+    document.querySelectorAll('.btn[data-tip]').forEach(function(b){ b.querySelector('.tip').textContent = b.classList.contains('on') ? b.dataset.tipOn : b.dataset.tip; });
+    // My List: + becomes a check mark once added
+    var ml = document.querySelector('.btn[data-label="My List"] img');
+    if(ml) ml.src = ml.parentElement.classList.contains('on') ? 'icons/detail-check.svg' : 'icons/detail-plus.svg';
+  }
+  var toastEl = document.getElementById('toast'), toastT;
+  function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove('on'); }, 1600); }
+  function back(){
+    try { if(document.referrer && /home\.html/.test(document.referrer) && history.length > 1){ history.back(); return; } } catch(e){}
+    location.href = 'home.html';
+  }
+  function select(el){
+    if(el.dataset.label === 'Play'){ toast('Now playing: District 9'); return; }
+    if(el.dataset.label === 'View Package'){ setView('pkg'); return; }
+    if(el.classList.contains('pcard')){
+      // Subscribe on PLAY ULTIMATE opens its package detail page; remember to come back to the packages
+      if(el.dataset.label === 'PLAY ULTIMATE Monthly Package'){ history.replaceState(null, '', 'movie-detail.html#packages'); location.href = 'package-detail.html'; return; }
+      toast('Subscribe to ' + el.dataset.label + ' (demo)'); return;
+    }
+    if(el.dataset.href){ location.href = el.dataset.href; return; }
+    if(el.dataset.toggle){
+      var msgs = el.dataset.toggle.split('|'), on = !el.classList.contains('on');
+      el.classList.toggle('on', on);
+      // like and dislike can't both be on
+      if(on && el.dataset.pair){ var other = document.querySelector('.btn[data-label="' + (el.dataset.pair === 'like' ? 'Like' : 'Dislike') + '"]'); if(other) other.classList.remove('on'); }
+      toast(on ? msgs[0] : msgs[1]); paint(); return;
+    }
+    toast(el.dataset.label + ' (demo)');
+  }
+  addEventListener('keydown', function(e){
+    var r = rows[cur.row], handled = true;
+    if(e.key === 'ArrowRight') cur.col[cur.row] = Math.min(r.length - 1, cur.col[cur.row] + 1);
+    else if(e.key === 'ArrowLeft') cur.col[cur.row] = Math.max(0, cur.col[cur.row] - 1);
+    else if(e.key === 'ArrowUp') cur.row = Math.max(0, cur.row - 1);
+    else if(e.key === 'ArrowDown') cur.row = Math.min(rows.length - 1, cur.row + 1);
+    else if(e.key === 'Enter' || e.key === ' ') select(r[cur.col[cur.row]]);
+    else if(e.key === 'Escape' || e.key === 'Backspace'){ if(view === 'pkg') setView('detail'); else back(); }
+    else handled = false;
+    if(handled){ e.preventDefault(); paint(); }
+  });
+  Object.keys(VIEWS).forEach(function(v){ VIEWS[v].rows.forEach(function(r, ri){ r.forEach(function(el, ci){
+    el.addEventListener('click', function(){ if(view !== v) return; cur.row = ri; cur.col[ri] = ci; paint(); select(el); });
+  }); }); });
+  // straight after subscribing (package-detail.html → success) the main button is Play, for that visit only:
+  // a reload or a fresh visit shows View Package again
+  try { localStorage.removeItem('d9-subscribed'); } catch(e){}
+  var subscribed = /subscribed=1/.test(location.search);
+  if(subscribed){
+    document.body.classList.add('subscribed');
+    var mainBtn = document.querySelector('.btn.package');
+    mainBtn.dataset.label = 'Play'; mainBtn.querySelector('span').textContent = 'Play';
+    history.replaceState(null, '', 'movie-detail.html');   // so a reload drops back to View Package
+    setTimeout(function(){ toast('PLAY ULTIMATE is active. Enjoy District 9!'); }, 300);
+  }
+  if(location.hash === '#packages' && !subscribed) setView('pkg');   // coming back from the package detail page
+  paint();
+})();
+</script>
+</body>
+</html>

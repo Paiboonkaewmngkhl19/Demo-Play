@@ -13,9 +13,9 @@ const tag = (name: string) => a(`badges/tag-${name}.png`);
 const FONT = "'Open Sans', sans-serif";
 const ON_SURFACE = "#e8e8e8", ON_VARIANT = "#a8a8a8", LIVE = "#ea5454";
 
-interface Slide { title: string; img: string; pos?: string; platform: string; channel: string; live?: boolean; time?: string }
+interface Slide { title: string; img: string; pos?: string; drop?: number; platform: string; channel: string; live?: boolean; time?: string }
 const SLIDES: Slide[] = [
-  { title: "Liverpool vs Brentford", img: a("posters/liver-ben.jpg"), pos: "50% center", platform: "monomax", channel: "Channel 501: Monomax1", live: true, time: "20:00 – 22:15" },
+  { title: "Liverpool vs Brentford", img: a("posters_portrait/liver-ben.jpg"), pos: "center top", drop: 64, platform: "monomax", channel: "Channel 501: Monomax1", live: true, time: "20:00 – 22:15" },
   { title: "House of the Dragon", img: a("posters_portrait/House.jpg"), platform: "hbo", channel: "HBO Original · Season 2" },
   { title: "F1: The Movie", img: a("posters_portrait/F1.jpg"), platform: "prime", channel: "Movie · 2 hr 35 min" },
   { title: "John Wick: Chapter 4", img: a("posters_portrait/John.jpg"), platform: "netflix", channel: "Movie · 2 hr 49 min" },
@@ -79,7 +79,7 @@ const TABS = ["Home", "LiveTV", "Sport", "Movie"];
 // ─── Sport tab (Figma "AIS PLAY / Sport", node 701:71230) ───
 const SPORT_SLIDES: Slide[] = [
   { title: "Man City vs Arsenal", img: a("posters_portrait/ex3.jpg"), platform: "monomax", channel: "Premier League", live: true, time: "20:00 – 22:15" },
-  { title: "Liverpool vs Brentford", img: a("posters/liver-ben.jpg"), pos: "50% center", platform: "monomax", channel: "Premier League", live: true, time: "22:30 – 00:30" },
+  { title: "Liverpool vs Brentford", img: a("posters_portrait/liver-ben.jpg"), pos: "center top", drop: 64, platform: "monomax", channel: "Premier League", live: true, time: "22:30 – 00:30" },
   { title: "Man Utd vs Chelsea", img: a("posters_portrait/ex4.jpg"), platform: "monomax", channel: "Emirates FA Cup", time: "Sat 19:30" },
   { title: "Japan vs Thailand", img: a("tv-features-test/live-stream-assets/football-255.jpg"), platform: "monomax", channel: "Asian Games 2026", live: true, time: "18:00 – 20:00" },
   { title: "F1: The Movie", img: a("posters_portrait/F1.jpg"), platform: "prime", channel: "Movie · 2 hr 35 min" },
@@ -266,9 +266,14 @@ export default function HomeScreen({
           }}
         >
           {slides.map((sl, i) => (
+            // drop: art with its key graphics right at the top (the vertical Liverpool vs Brentford poster) starts this
+            // much lower, fading in from the page colour, so the header doesn't sit on top of them
             <img key={tab + sl.title} src={sl.img} alt="" draggable={false}
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
-              style={{ objectPosition: sl.pos ?? "center", opacity: i === slide ? 1 : 0 }} />
+              className="absolute inset-x-0 bottom-0 w-full object-cover transition-opacity duration-700"
+              style={{
+                objectPosition: sl.pos ?? "center", opacity: i === slide ? 1 : 0, top: sl.drop ?? 0, height: `calc(100% - ${sl.drop ?? 0}px)`,
+                ...(sl.drop ? { WebkitMaskImage: "linear-gradient(180deg, transparent, #000 48px)", maskImage: "linear-gradient(180deg, transparent, #000 48px)" } : {}),
+              }} />
           ))}
           <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(16,16,16,0) 45%, rgba(16,16,16,0.85) 78%, #101010 100%)" }} />
           <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-6 py-2" style={{ gap: sport ? 20 : 26, paddingLeft: sport ? 16 : 24, paddingRight: sport ? 16 : 24 }}>
