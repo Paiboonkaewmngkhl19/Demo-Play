@@ -212,6 +212,9 @@
     transform-origin:top left; overflow:hidden; transition:opacity .3s cubic-bezier(.2,0,0,1); pointer-events:none;
   }
   .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center 30%;transition:opacity .6s ease;}
+  /* the first Jump Right Back In card (Liverpool vs Brentford) plays a video as its screen background */
+  .hero-bg-video{width:100%;height:100%;object-fit:cover;opacity:1;}
+  .hero-bg-video.off{opacity:0;}
   /* only a dark wash behind the text on the left and a fade into the page at the bottom: the picture stays bright */
   .hero-backdrop::after{
     content:"";position:absolute;inset:0;
@@ -438,16 +441,17 @@
   img[src*="badges/tag-viu"]{background:#ffbf00 !important;}
   img[src*="badges/tag-monomax"]{background:#fff !important;}
 
-  /* Quick Access chips (Figma 718:94195) */
+  /* Quick Access chips (Figma 1339:12726): five chips across 1700px. The focused one is a 370px lilac pill and
+     the other four share what is left (300.5px each), so the row keeps its width as focus moves along it. */
   .quick-row .rail-track{gap:32px;}
-  .quick-chip{width:401px;height:110px;box-sizing:border-box;border-radius:16px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;padding:16px;
+  .quick-chip{width:300.5px;height:110px;box-sizing:border-box;border-radius:16px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;padding:16px;
     background:radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,.12) 6%, rgba(255,255,255,.3) 100%);
     box-shadow:inset -1px 3px 16px rgba(255,255,255,.16);border:3px solid transparent;
     transition:border-radius .22s cubic-bezier(.2,0,0,1), background .22s ease, border-color .22s ease;}
-  .quick-chip span{font-size:28px;font-weight:400;line-height:1.2;color:#fff;text-shadow:0 4px 10px rgba(0,0,0,.5);white-space:nowrap;}
-  .quick-chip.focused{border-radius:99px;border-color:transparent;   /* the focus ring is the only outline */
-    background:linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15)), radial-gradient(ellipse 120% 160% at 12% 90%, rgba(255,255,255,.14) 6%, rgba(255,255,255,.3) 100%);}
-  .quick-chip.focused span{font-size:32px;font-weight:700;text-shadow:0 4px 10px rgba(0,0,0,.25);}
+  .quick-chip span{font-size:24px;font-weight:400;line-height:1.2;color:#fff;text-shadow:0 4px 10px rgba(0,0,0,.5);white-space:nowrap;}
+  .quick-chip.focused{width:370px;padding:20px 32px;border-radius:99px;border-color:transparent;   /* the focus ring is the only outline */
+    background:linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15)), radial-gradient(ellipse 120% 160% at 12% 90%, rgba(157,152,224,.24) 6%, rgba(157,152,224,.6) 100%);}
+  .quick-chip.focused span{font-size:28px;font-weight:700;text-shadow:0 4px 10px rgba(0,0,0,.25);}
   .quick-row .item.focused{transform:none;}   /* the chip changes shape instead of growing */
 
   /* ---------- Theme picker (Figma PLAY-player "popup theme select", 1326:12345) ---------- */
@@ -795,6 +799,7 @@
   <div class="hero-backdrop">
     <div class="hero-bg hero-bg-a" style="background-image:url('posters/liver-ben.jpg');opacity:1;"></div>
     <div class="hero-bg hero-bg-b" style="opacity:0;"></div>
+    <video class="hero-bg hero-bg-video" src="posters/homapage.mp4" autoplay muted loop playsinline preload="auto"></video>
     <div class="hero-bg hero-bg-livetv" style="background-image:url('posters/livetv-bg.jpg');"><div class="chip-screen-box">LIVE TV</div></div>
   </div>
   <!-- full-screen state: rails fade out under the nav -->
@@ -1512,11 +1517,11 @@
   });
   MOBILE_ROWS.forEach(function(r){ (r.items || []).forEach(function(it){ if(it.img && /(F1|\/f1)\.jpg$/.test(it.img) && it.plat) it.plat = 'prime'; }); });
 
-  /* ---------- Row: Quick Access (Figma "section_customize_content", 718:94195) ----------
-     Four 401 x 110 frosted chips in a 4-column row; the focused one turns into a lilac pill (Figma shows it on
+  /* ---------- Row: Quick Access (Figma 1339:12726) ----------
+     Five frosted chips across the row; the focused one turns into a wider lilac pill (Figma shows it on
      Manage Subscription). */
   (function(){
-    var chips = ['Manage Subscription', 'My Rental', 'FAQs', 'Setting'];
+    var chips = ['Manage Subscription', 'Store', 'My Rental', 'FAQs', 'Setting'];
     addRow('<div class="row-block quick-row"><div class="row-title">Quick Access</div><div class="rail-viewport"><div class="rail-track">'+
       chips.map(function(c){ return '<div class="quick-chip item" data-title="'+c+'" data-ring-art=""><span>'+c+'</span></div>'; }).join('')+
     '</div></div></div>');
@@ -1539,6 +1544,10 @@
 
   // first focus: the first card of the hero row (row 1; row 0 is the top nav)
   var curRow = 1;
+  // the rail the top nav was reached from with Left (0: reached the normal way, from the first rail). While the nav
+  // is focused the page stays as that rail left it, and Down goes back to it.
+  var navFrom = 0;
+  function ctxRow(){ return curRow === 0 && navFrom ? navFrom : curRow; }
   var colByRow = rows.map(function(){ return 0; });
   colByRow[0] = NAV_HOME_COL;
 
@@ -1613,11 +1622,13 @@
   var heroDescEl = document.querySelector('.hero-desc');
   var heroLiveEl = document.querySelector('.hero .badge-live');
   var currentHeroImgKey = 'posters/liver-ben.jpg';
+  var heroVideo = document.querySelector('.hero-bg-video');
 
   // crossfade the screen background to a new picture (key: anything identifying it, css: a CSS url(...))
   function setHeroBg(key, css){
     if(!key || key === currentHeroImgKey || !heroBgA || !heroBgB) return;
     currentHeroImgKey = key;
+    if(heroVideo){ var vid = key === 'posters/liver-ben.jpg'; heroVideo.classList.toggle('off', !vid); if(vid) heroVideo.play().catch(function(){}); }
     var to = heroBgActive === 'a' ? heroBgB : heroBgA, from = heroBgActive === 'a' ? heroBgA : heroBgB;
     to.style.backgroundImage = css;
     to.style.opacity = '1';
@@ -1719,13 +1730,14 @@
     // never gets pushed away while browsing those rows. Past that zone
     // there's no more dynamic background driving the screen, so it fades
     // out instead of scrolling off.
-    if(heroFixed) heroFixed.classList.toggle('hero-hidden', curRow > HERO_ZONE_LAST_ROW);
-    if(heroBackdrop) heroBackdrop.classList.toggle('hero-hidden', curRow > HERO_ZONE_LAST_ROW);
+    var cr = ctxRow();
+    if(heroFixed) heroFixed.classList.toggle('hero-hidden', cr > HERO_ZONE_LAST_ROW);
+    if(heroBackdrop) heroBackdrop.classList.toggle('hero-hidden', cr > HERO_ZONE_LAST_ROW);
     applyRowsMask(getScale());
     // While the hero shows, rails above the focused one are hidden entirely (they fade out), so none of them peeks
     // out above the focused rail; in the full-screen state the previous rail stays visible as usual.
     rows.forEach(function(r, ri){
-      if(ri > 0 && r.el) r.el.classList.toggle('row-above', curRow <= HERO_ZONE_LAST_ROW && ri < curRow);
+      if(ri > 0 && r.el) r.el.classList.toggle('row-above', cr <= HERO_ZONE_LAST_ROW && ri < cr);
     });
     if(curRow === HERO_ROW_INDEX){
       updateHeroFromItem(rows[HERO_ROW_INDEX].items[colByRow[HERO_ROW_INDEX]]);
@@ -1793,6 +1805,11 @@
 
   function moveCol(dir){
     var r = rows[curRow];
+    // Left on a rail's first card jumps up to the top nav bar (its Home tab)
+    // (only the focus moves: the page stays where it is, and Down returns to this rail)
+    if(dir < 0 && curRow > 0 && colByRow[curRow] === 0){
+      navFrom = curRow; curRow = 0; colByRow[0] = NAV_HOME_COL; updateFocus(); return;
+    }
     var n = clamp(colByRow[curRow] + dir, 0, r.items.length-1);
     if(n === colByRow[curRow]) return;
     colByRow[curRow] = n;
@@ -1800,6 +1817,8 @@
   }
   function moveRow(dir){
     var n = clamp(curRow + dir, 0, rows.length-1);
+    if(curRow === 0 && navFrom){ if(dir < 0) return; n = navFrom; }
+    navFrom = 0;
     if(n === curRow) return;
     curRow = n;
     updateFocus();
@@ -1826,6 +1845,8 @@
 
   document.addEventListener('keydown', function(e){
     if(e.key === 'Escape' || e.key === 'Backspace'){
+      // scrolled down the page: Back first returns to the top (the first rail, hero showing); at the top it leaves Home
+      if(!mobileMode && ctxRow() > HERO_ROW_INDEX){ navFrom = 0; curRow = HERO_ROW_INDEX; updateFocus(); e.preventDefault(); return; }
       goBackToPicker();
       e.preventDefault();
       return;
@@ -1849,7 +1870,7 @@
   rows.forEach(function(r,ri){
     r.items.forEach(function(it,ci){
       it.addEventListener('click', function(){
-        curRow = ri; colByRow[ri] = ci;
+        navFrom = 0; curRow = ri; colByRow[ri] = ci;
         updateFocus();
         selectCurrent();
       });
@@ -2027,7 +2048,7 @@
     'Anime':       {d:'Top series and films from Japan.<br>From epic adventures to slice-of-life favourites.'}
   };
   function updateLiveTvBg(){
-    var r = rows[curRow], el = r && r.items[colByRow[curRow]];
+    var cr = ctxRow(), r = rows[cr], el = r && r.items[colByRow[cr]];
     var on = !!(el && el.classList.contains('chip'));   // any button in the chip rail shows the Live TV screen
     heroLiveTvBg.classList.toggle('on', on);
     heroSection.classList.toggle('livetv', on);
