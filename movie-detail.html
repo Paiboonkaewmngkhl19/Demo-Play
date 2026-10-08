@@ -287,7 +287,11 @@
   addEventListener('keydown', function(e){
     var r = rows[cur.row], handled = true;
     if(e.key === 'ArrowRight') cur.col[cur.row] = Math.min(r.length - 1, cur.col[cur.row] + 1);
-    else if(e.key === 'ArrowLeft') cur.col[cur.row] = Math.max(0, cur.col[cur.row] - 1);
+    // Left on a row's first item jumps up to the top nav bar (its Home tab), like on Home
+    else if(e.key === 'ArrowLeft'){
+      if(cur.row > 0 && cur.col[cur.row] === 0){ cur.row = 0; cur.col[0] = 2; }
+      else cur.col[cur.row] = Math.max(0, cur.col[cur.row] - 1);
+    }
     else if(e.key === 'ArrowUp') cur.row = Math.max(0, cur.row - 1);
     else if(e.key === 'ArrowDown') cur.row = Math.min(rows.length - 1, cur.row + 1);
     else if(e.key === 'Enter' || e.key === ' ') select(r[cur.col[cur.row]]);
